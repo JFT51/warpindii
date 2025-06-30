@@ -299,13 +299,12 @@ button:hover {
 .employee-card-content {
     padding: 16px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     gap: 16px;
     height: 100%;
 }
 
-.employee-info {
+.employee-main-info {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -341,9 +340,12 @@ button:hover {
 
 .employee-controls {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
+    padding: 12px 16px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin: 16px -16px -16px -16px;
 }
 
 .status-toggle {
@@ -1433,7 +1435,6 @@ input:checked + .toggle-slider:before {
 
 /* Enhanced Employee Cards */
 .employee-card {
-    background: linear-gradient(135deg, #f8fffe, var(--white));
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-lg);
     padding: 0;
@@ -1442,6 +1443,27 @@ input:checked + .toggle-slider:before {
     position: relative;
     overflow: hidden;
     height: fit-content;
+}
+
+/* Contract type background colors */
+.employee-card.full-time {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.05));
+}
+
+.employee-card.part-time {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.15), rgba(33, 150, 243, 0.05));
+}
+
+.employee-card.flexi-job {
+    background: linear-gradient(135deg, rgba(255, 235, 59, 0.15), rgba(255, 235, 59, 0.05));
+}
+
+.employee-card.student {
+    background: linear-gradient(135deg, rgba(255, 87, 34, 0.15), rgba(255, 87, 34, 0.05));
+}
+
+.employee-card.extra {
+    background: linear-gradient(135deg, rgba(158, 158, 158, 0.15), rgba(158, 158, 158, 0.05));
 }
 
 .employee-card::before {

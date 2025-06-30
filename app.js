@@ -1,6 +1,7 @@
 // Global variables
 let currentLanguage = 'nl';
 let currentWeek = new Date();
+let pc302Data = null;
 let employees = JSON.parse(localStorage.getItem('employees')) || [
     {
         id: '3',
@@ -272,7 +273,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
-function initializeApp() {
+async function initializeApp() {
+    // Load PC302 data first
+    await loadPC302Data();
+    
     populateJobCategories();
     generateQRCode();
     loadEmployees();
@@ -295,6 +299,27 @@ function initializeApp() {
     setTimeout(() => {
         loadEmployees();
     }, 100);
+}
+
+async function loadPC302Data() {
+    try {
+        const response = await fetch('pc302.json');
+        pc302Data = await response.json();
+    } catch (error) {
+        console.error('Failed to load PC302 data:', error);
+        // Fallback data in case the file can't be loaded
+        pc302Data = {
+            categories: [
+                {
+                    name: { en: 'Category I', nl: 'Categorie I', fr: 'Catégorie I' },
+                    job_titles: [
+                        { en: 'Waiter', nl: 'Kelner', fr: 'Serveur' },
+                        { en: 'Kitchen helper', nl: 'Keukenhulp', fr: 'Aide-cuisinier' }
+                    ]
+                }
+            ]
+        };
+    }
 }
 
 // Navigation functions
@@ -478,16 +503,17 @@ function createEmployeeCard(employee) {
     card.addEventListener('dragstart', handleDragStart);
     
     const contractTypeClass = `contract-${employee.contractType}`;
+    const localizedJobTitle = getLocalizedJobTitle(employee.jobTitle);
     
     card.innerHTML = `
         <div class="employee-card-content">
-            <div class="employee-info">
+            <div class="employee-main-info">
                 <div class="employee-avatar">
                     <i class="fas fa-user-circle"></i>
                 </div>
                 <div class="employee-details">
                     <h4 class="employee-name">${employee.firstName} ${employee.lastName}</h4>
-                    <p class="employee-job">${employee.jobTitle}</p>
+                    <p class="employee-job">${localizedJobTitle}</p>
                     <span class="contract-type ${contractTypeClass}">
                         <i class="fas fa-id-badge"></i> ${getContractTypeLabel(employee.contractType)}
                     </span>
@@ -501,7 +527,7 @@ function createEmployeeCard(employee) {
                         <span class="toggle-slider"></span>
                     </label>
                     <span class="status-label ${employee.active ? 'active' : 'inactive'}">
-                        ${employee.active ? 'Active' : 'Inactive'}
+                        ${employee.active ? translations[currentLanguage].active || 'Active' : translations[currentLanguage].inactive || 'Inactive'}
                     </span>
                 </div>
                 
@@ -521,6 +547,21 @@ function createEmployeeCard(employee) {
     `;
     
     return card;
+}
+
+function getLocalizedJobTitle(jobTitle) {
+    // Search through all categories to find the matching job title
+    for (const category of pc302Data.categories) {
+        for (const jobTitleData of category.job_titles) {
+            // Check if the job title matches in any language
+            if (jobTitleData.en === jobTitle || 
+                jobTitleData.nl === jobTitle || 
+                jobTitleData.fr === jobTitle) {
+                return jobTitleData[currentLanguage] || jobTitle;
+            }
+        }
+    }
+    return jobTitle; // Return original if not found
 }
 
 function getContractTypeLabel(type) {
