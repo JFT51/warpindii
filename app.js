@@ -1,7 +1,7 @@
 // Global variables
 let currentLanguage = 'nl';
 let currentWeek = new Date();
-let pc302Data = null;
+// pc302Data is defined in data.js
 let employees = JSON.parse(localStorage.getItem('employees')) || [
     {
         id: '3',
@@ -268,94 +268,131 @@ let timeclockLogs = JSON.parse(localStorage.getItem('timeclockLogs')) || [];
 let weeklyPlanning = JSON.parse(localStorage.getItem('weeklyPlanning')) || {};
 let signaturePad;
 
+// Navigation functions - Define early to ensure availability
+function showSection(sectionId) {
+    console.log('showSection called with:', sectionId);
+    
+    try {
+        // Hide all sections
+        document.querySelectorAll('.content-section').forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        // Remove active class from all nav buttons
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected section
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) {
+            targetSection.classList.add('active');
+            console.log('Section switched to:', sectionId);
+        } else {
+            console.error('Section not found:', sectionId);
+        }
+        
+        // Add active class to clicked nav button
+        const targetButton = document.querySelector(`[data-section="${sectionId}"]`);
+        if (targetButton) {
+            targetButton.classList.add('active');
+        }
+        
+        // Special handling for different sections
+        if (sectionId === 'planning') {
+            if (typeof initializeWeekPlanning === 'function') {
+                initializeWeekPlanning();
+            }
+        } else if (sectionId === 'table-planning') {
+            if (typeof loadTablePlanning === 'function') {
+                loadTablePlanning();
+            }
+        } else if (sectionId === 'employees') {
+            // Ensure employees are displayed when switching to employees section
+            if (typeof loadEmployees === 'function') {
+                loadEmployees();
+            }
+        }
+    } catch (error) {
+        console.error('Error in showSection:', error);
+    }
+}
+
+// Make sure showSection is globally available
+window.showSection = showSection;
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the main application
     initializeApp();
+    
+    // Load saved settings on page load
+    // Load custom logo
+    const customLogo = localStorage.getItem('customLogo');
+    if (customLogo) {
+        document.getElementById('logoImg').src = customLogo;
+    }
+    
+    // Load color theme
+    const colorTheme = localStorage.getItem('colorTheme');
+    if (colorTheme) {
+        const theme = JSON.parse(colorTheme);
+        document.documentElement.style.setProperty('--primary-color', theme.primary);
+        document.documentElement.style.setProperty('--secondary-color', theme.secondary);
+        document.documentElement.style.setProperty('--accent-color', theme.accent);
+        
+        document.getElementById('primaryColor').value = theme.primary;
+        document.getElementById('secondaryColor').value = theme.secondary;
+        document.getElementById('accentColor').value = theme.accent;
+    }
 });
 
 async function initializeApp() {
-    // Load PC302 data first
-    await loadPC302Data();
-    
-    populateJobCategories();
-    generateQRCode();
-    loadEmployees();
-    loadContracts();
-    loadAbsences();
-    loadTimeclockLogs();
-    initializeWeekPlanning();
-    updateLanguage();
-    
-    // Set up signature pad
-    const canvas = document.getElementById('signaturePad');
-    if (canvas) {
-        signaturePad = new SignaturePad(canvas);
-    }
-    
-    // Ensure the employees section is properly initialized and visible
-    showSection('employees');
-    
-    // Force reload employees to ensure they're displayed
-    setTimeout(() => {
+    try {
+        // Load PC302 data first (but don't block navigation if it fails)
+        await loadPC302Data();
+        
+        populateJobCategories();
+        generateQRCode();
         loadEmployees();
-    }, 100);
+        loadContracts();
+        loadAbsences();
+        loadTimeclockLogs();
+        initializeWeekPlanning();
+        updateLanguage();
+        
+        // Set up signature pad
+        const canvas = document.getElementById('signaturePad');
+        if (canvas) {
+            signaturePad = new SignaturePad(canvas);
+        }
+        
+        // Ensure the employees section is properly initialized and visible
+        showSection('employees');
+        
+        // Force reload employees to ensure they're displayed
+        setTimeout(() => {
+            loadEmployees();
+        }, 100);
+    } catch (error) {
+        console.error('Initialization error:', error);
+        // Still try to show basic navigation even if initialization fails
+        showSection('employees');
+    }
 }
 
 async function loadPC302Data() {
     try {
         const response = await fetch('pc302.json');
-        pc302Data = await response.json();
+        // pc302Data is already defined in data.js, no need to reassign
+        console.log('PC302 data from external file loaded successfully');
     } catch (error) {
         console.error('Failed to load PC302 data:', error);
-        // Fallback data in case the file can't be loaded
-        pc302Data = {
-            categories: [
-                {
-                    name: { en: 'Category I', nl: 'Categorie I', fr: 'Catégorie I' },
-                    job_titles: [
-                        { en: 'Waiter', nl: 'Kelner', fr: 'Serveur' },
-                        { en: 'Kitchen helper', nl: 'Keukenhulp', fr: 'Aide-cuisinier' }
-                    ]
-                }
-            ]
-        };
+        // pc302Data is already defined in data.js with complete data
+        console.log('Using pc302Data from data.js file');
     }
 }
 
-// Navigation functions
-function showSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    // Remove active class from all nav buttons
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected section
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.classList.add('active');
-    }
-    
-    // Add active class to clicked nav button
-    const targetButton = document.querySelector(`[data-section="${sectionId}"]`);
-    if (targetButton) {
-        targetButton.classList.add('active');
-    }
-    
-    // Special handling for different sections
-    if (sectionId === 'planning') {
-        initializeWeekPlanning();
-    } else if (sectionId === 'table-planning') {
-        loadTablePlanning();
-    } else if (sectionId === 'employees') {
-        // Ensure employees are displayed when switching to employees section
-        loadEmployees();
-    }
-}
 
 // Employee management functions
 function openEmployeeModal(employeeId = null) {
@@ -400,7 +437,28 @@ function fillEmployeeForm(employee) {
 
 function populateJobCategories() {
     const categorySelect = document.getElementById('jobCategory');
+    if (!categorySelect) return;
+    
     categorySelect.innerHTML = '';
+    
+    // Check if PC302 data is loaded
+    if (!pc302Data || !pc302Data.categories) {
+        console.log('PC302 data not loaded yet, using fallback categories');
+        // Add basic fallback categories
+        const fallbackCategories = [
+            { name: { nl: 'Categorie I', fr: 'Catégorie I' } },
+            { name: { nl: 'Categorie II', fr: 'Catégorie II' } },
+            { name: { nl: 'Categorie III', fr: 'Catégorie III' } }
+        ];
+        
+        fallbackCategories.forEach((category, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = category.name[currentLanguage] || category.name.nl;
+            categorySelect.appendChild(option);
+        });
+        return;
+    }
     
     pc302Data.categories.forEach((category, index) => {
         const option = document.createElement('option');
@@ -550,6 +608,11 @@ function createEmployeeCard(employee) {
 }
 
 function getLocalizedJobTitle(jobTitle) {
+    // Return original job title if PC302 data is not loaded yet
+    if (!pc302Data || !pc302Data.categories) {
+        return jobTitle;
+    }
+    
     // Search through all categories to find the matching job title
     for (const category of pc302Data.categories) {
         for (const jobTitleData of category.job_titles) {
@@ -1601,6 +1664,12 @@ function updateLanguage() {
     
     // Update job categories and titles
     populateJobCategories();
+    
+    // Reload employee cards to show job titles in the new language
+    loadEmployees();
+    
+    // Update employee pool if on planning section
+    loadEmployeePool();
 }
 
 // Utility functions
@@ -1900,24 +1969,3 @@ function handleShiftDrop(e) {
     });
 }
 
-// Load saved settings on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Load custom logo
-    const customLogo = localStorage.getItem('customLogo');
-    if (customLogo) {
-        document.getElementById('logoImg').src = customLogo;
-    }
-    
-    // Load color theme
-    const colorTheme = localStorage.getItem('colorTheme');
-    if (colorTheme) {
-        const theme = JSON.parse(colorTheme);
-        document.documentElement.style.setProperty('--primary-color', theme.primary);
-        document.documentElement.style.setProperty('--secondary-color', theme.secondary);
-        document.documentElement.style.setProperty('--accent-color', theme.accent);
-        
-        document.getElementById('primaryColor').value = theme.primary;
-        document.getElementById('secondaryColor').value = theme.secondary;
-        document.getElementById('accentColor').value = theme.accent;
-    }
-});
