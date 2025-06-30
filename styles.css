@@ -211,7 +211,7 @@ button:hover {
     margin: 0;
 }
 
-/* Modal Styles (for other modals, not settings) */
+/* Modal Styles */
 .modal {
     display: none; /* Hidden by default */
     position: fixed; /* Stay in place */
@@ -232,11 +232,6 @@ button:hover {
     width: 80%;
     max-width: 600px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    border-radius: var(--border-radius);
-}
-
-.modal-content.large {
-    max-width: 900px;
 }
 
 .close {
@@ -256,8 +251,9 @@ button:hover {
 /* Employee Cards */
 .employees-grid {
     display: grid;
-    gap: 8px;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    padding: 0;
 }
 
 /* Contract type background colors (15% opacity) */
@@ -283,12 +279,13 @@ button:hover {
 
 .employee-card {
     border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
     overflow: hidden;
     position: relative;
     height: fit-content;
+    background: white;
 }
 
 .employee-card.inactive {
@@ -297,172 +294,93 @@ button:hover {
 }
 
 .employee-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
 }
 
 .employee-card-content {
-    padding: 10px;
-    display: flex;
+    padding: 16px;
     flex-direction: column;
-    gap: 6px;
+    gap: 12px;
     height: 100%;
+    position: relative;
 }
 
 .employee-main-info {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
-    gap: 8px;
-    flex: 1;
-    width: 100%;
+    gap: 12px;
+    padding: 0;
+    text-align: left;
 }
 
 .employee-avatar {
     font-size: 24px;
     color: var(--primary-color);
-    opacity: 0.8;
+    opacity: 0.9;
     flex-shrink: 0;
+    margin-right: 8px;
 }
 
 .employee-details {
     flex: 1;
+    width: 100%;
 }
 
 .employee-name {
-    margin: 0 0 2px 0;
-    font-size: 14px;
+    margin: 0 0 4px 0;
+    font-size: 16px;
     font-weight: 600;
     color: var(--primary-color);
-    line-height: 1.1;
+    line-height: 1.2;
 }
 
 .employee-job {
-    margin: 0 0 3px 0;
-    color: #555;
-    font-size: 11px;
+    margin: 0 0 6px 0;
+    color: #666;
+    font-size: 13px;
     font-weight: 500;
-    line-height: 1.1;
+    line-height: 1.3;
 }
 
+/* Employee Controls */
 .employee-controls {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%; /* Ensure it takes full width of its parent */
-    margin-top: 8px; /* Add some space from details */
-    padding: 0;
-    background: none;
-    border: none;
-}
-
-.status-toggle {
-    display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
+    gap: 8px;
+    width: 100%;
+    margin-top: auto;
 }
 
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 32px; /* Reduced size */
-    height: 16px; /* Reduced size */
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.3s;
-    border-radius: 16px; /* Adjusted border-radius */
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 12px; /* Reduced size */
-    width: 12px; /* Reduced size */
-    left: 2px; /* Adjusted position */
-    bottom: 2px; /* Adjusted position */
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--primary-color);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(16px); /* Adjusted translation */
-}
-
-.status-label {
-    font-size: 9px; /* Reduced font size */
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #666;
-}
-
-.status-label.active {
-    color: var(--primary-color);
-}
-
-.status-label.inactive {
-    color: #999;
-}
-
-.card-actions {
-    display: flex;
-    gap: 4px;
-}
-
-.btn-icon-secondary, .btn-icon-danger {
-    background: none;
-    border: 1px solid;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
+.employee-controls button {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 8px;
+    font-size: 16px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--light-text);
 }
 
-.btn-icon-secondary {
-    border-color: #ddd;
-    color: #666;
+.employee-controls button:hover {
+    transform: none;
+    box-shadow: none;
 }
 
-.btn-icon-secondary:hover {
-    background-color: #f8f9fa;
-    border-color: #ccc;
-    transform: scale(1.1);
+.employee-controls button[data-action="edit"]:hover {
+    color: var(--primary-color);
 }
 
-.btn-icon-danger {
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
-.btn-icon-danger:hover {
-    background-color: #dc3545;
-    color: white;
-    transform: scale(1.1);
+.employee-controls button[data-action="delete"]:hover {
+    color: var(--danger-color);
 }
 
 .employee-card .contract-type {
@@ -1132,79 +1050,96 @@ input:checked + .toggle-slider:before {
 }
 
 /* Settings Styles */
-.settings-container {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: var(--spacing-xl);
+/* Settings Section Styles */
+.settings-tabs {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-lg);
     background-color: var(--white);
     border-radius: var(--border-radius);
-    box-shadow: var(--card-shadow);
-    padding: var(--spacing-xl);
-    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.settings-nav {
-    border-right: 1px solid var(--border-color);
-    padding-right: var(--spacing-xl);
-}
-
-.settings-nav-btn {
+.settings-tabs .tab-btn {
+    background: none;
+    border: none;
+    padding: var(--spacing-md) var(--spacing-lg);
+    color: var(--light-text);
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    width: 100%;
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
-    border: none;
-    border-radius: var(--border-radius);
-    background: none;
-    color: var(--dark-text);
-    font-size: var(--font-size-base);
-    text-align: left;
-    transition: all 0.2s ease;
+    gap: var(--spacing-sm);
 }
 
-.settings-nav-btn:hover {
+.settings-tabs .tab-btn:hover {
     background-color: var(--light-bg);
     color: var(--primary-color);
 }
 
-.settings-nav-btn.active {
+.settings-tabs .tab-btn.active {
     background-color: var(--primary-color);
     color: var(--white);
 }
 
-.settings-nav-btn i {
-    width: 20px;
-    text-align: center;
+.settings-tabs .tab-btn i {
+    font-size: var(--font-size-lg);
 }
 
-.settings-content {
-    padding: 0;
-}
-
-.settings-section {
+.settings-tab-content {
     display: none;
     padding: var(--spacing-lg);
     background-color: var(--white);
     border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
 }
 
-.settings-section.active {
+.settings-tab-content.active {
     display: block;
 }
 
-.settings-header {
-    margin-bottom: var(--spacing-xl);
-    padding-bottom: var(--spacing-md);
+.settings-card {
+    background-color: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    overflow: hidden;
+}
+
+.settings-card-header {
+    background-color: var(--light-bg);
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 1px solid var(--border-color);
 }
 
-.settings-header h3 {
+.settings-card-header h3 {
     margin: 0;
     color: var(--primary-color);
     font-size: var(--font-size-lg);
-    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.settings-card-content {
+    padding: var(--spacing-lg);
+}
+
+.settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--spacing-lg);
+    background-color: var(--white);
+    border-radius: var(--border-radius);
+    margin-top: var(--spacing-lg);
+}
+
+.settings-content {
+    padding: var(--spacing-lg) 0;
 }
 
 .settings-input-number {
@@ -1213,115 +1148,6 @@ input:checked + .toggle-slider:before {
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius-sm);
     font-size: var(--font-size-base);
-}
-
-.settings-group {
-    margin-bottom: var(--spacing-xl);
-}
-
-.settings-group-title {
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: var(--spacing-md);
-}
-
-.settings-input-group {
-    margin-bottom: var(--spacing-lg);
-}
-
-.settings-input-group label {
-    display: block;
-    margin-bottom: var(--spacing-sm);
-    color: var(--dark-text);
-    font-weight: 500;
-}
-
-.settings-input-group input[type="number"],
-.settings-input-group input[type="text"],
-.settings-input-group input[type="email"],
-.settings-input-group input[type="tel"],
-.settings-input-group select,
-.settings-input-group textarea {
-    width: 100%;
-    max-width: 300px;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-base);
-}
-
-.input-suffix {
-    margin-left: var(--spacing-sm);
-    color: var(--light-text);
-}
-
-.time-range {
-    display: flex;
-    gap: var(--spacing-lg);
-    margin-top: var(--spacing-sm);
-}
-
-.time-input {
-    flex: 1;
-    max-width: 150px;
-}
-
-.time-input label {
-    display: block;
-    margin-bottom: var(--spacing-xs);
-    font-size: var(--font-size-sm);
-    color: var(--light-text);
-}
-
-.time-input input[type="time"] {
-    width: 100%;
-    padding: var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-base);
-}
-
-.settings-section {
-    background-color: var(--white);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-    box-shadow: var(--card-shadow);
-}
-
-/* Language Settings Specific Styles */
-#language-settings select {
-    width: 100%;
-    max-width: 200px;
-}
-
-/* Business Settings Specific Styles */
-#business-settings input,
-#business-settings textarea {
-    width: 100%;
-    max-width: 400px;
-}
-
-#business-settings textarea {
-    resize: vertical;
-}
-
-#business-settings .form-group {
-    margin-bottom: var(--spacing-lg);
-}
-
-/* Planning Settings Specific Styles */
-#planning-settings .checkbox-label {
-    margin-top: var(--spacing-md);
-}
-
-/* Save Button Container */
-.form-actions {
-    margin-top: var(--spacing-xl);
-    padding-top: var(--spacing-lg);
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: flex-end;
 }
 
 .settings-toggle {
@@ -1455,69 +1281,6 @@ input:checked + .slider:before {
 .settings-toggle span {
     font-size: var(--font-size-base);
     color: var(--dark-text);
-}
-
-/* Full-page Settings Section Styles */
-.settings-container {
-    display: flex;
-    gap: var(--spacing-xl);
-    min-height: 600px; /* Adjust as needed */
-    background-color: var(--white);
-    border-radius: var(--border-radius);
-    box-shadow: var(--card-shadow);
-    padding: var(--spacing-xl);
-}
-
-.settings-nav {
-    flex: 0 0 250px; /* Fixed width sidebar */
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    border-right: 1px solid var(--border-color);
-    padding-right: var(--spacing-xl);
-}
-
-.settings-nav-btn {
-    background-color: transparent;
-    border: none;
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-radius: var(--border-radius-sm);
-    text-align: left;
-    font-size: var(--font-size-base);
-    font-weight: 500;
-    color: var(--dark-text);
-    transition: var(--transition);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
-.settings-nav-btn:hover {
-    background-color: var(--light-bg);
-    color: var(--primary-color);
-}
-
-.settings-nav-btn.active {
-    background-color: var(--primary-color);
-    color: var(--white);
-    box-shadow: var(--card-shadow);
-}
-
-.settings-nav-btn .fas {
-    font-size: var(--font-size-lg);
-}
-
-.settings-content-area {
-    flex: 1;
-    padding-left: var(--spacing-xl);
-}
-
-.settings-category {
-    display: none; /* Hidden by default */
-}
-
-.settings-category.active {
-    display: block;
 }
 
 .toggle-switch {
@@ -1906,7 +1669,7 @@ input:checked + .slider:before {
 }
 
 .employee-avatar .fas {
-    font-size: 3rem;
+    font-size: 2rem;
     color: var(--primary-color);
     opacity: 0.7;
 }
@@ -1933,9 +1696,7 @@ input:checked + .slider:before {
 }
 
 /* Employee Details */
-.employee-details {
-    padding: var(--spacing-lg);
-}
+
 
 .detail-row {
     display: flex;
@@ -2020,49 +1781,104 @@ input:checked + .slider:before {
     border: 1px solid rgba(158, 158, 158, 0.3);
 }
 
-/* Card Actions */
-.card-actions {
+/* Card Controls */
+.employee-controls {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background-color: var(--light-bg);
-    border-top: 1px solid var(--border-color);
-    margin-top: auto;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    margin-top: 0;
+    padding: 0;
+    position: relative;
 }
 
-.btn-icon-secondary,
-.btn-icon-danger {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
+.employee-controls button {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: var(--transition);
     cursor: pointer;
-    font-size: var(--font-size-sm);
+    transition: all 0.2s ease;
+    font-size: 14px;
+    padding: 0;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    color: var(--light-text);
 }
 
+.employee-controls button:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.employee-controls button[data-action="edit"]:hover {
+    color: var(--primary-color);
+}
+
+.employee-controls button[data-action="delete"]:hover {
+    color: var(--danger-color);
+}
+
+/* Action Button Styles */
 .btn-icon-secondary {
-    background-color: var(--secondary-color);
-    color: var(--white);
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    color: var(--light-text);
 }
 
 .btn-icon-secondary:hover {
-    background-color: var(--primary-color);
-    transform: scale(1.1);
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.btn-icon-success {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.btn-icon-success:hover {
+    background: var(--success-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.btn-icon-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid var(--warning-color);
+    color: var(--warning-color);
+}
+
+.btn-icon-warning:hover {
+    background: var(--warning-color);
+    color: var(--dark-text);
+    transform: translateY(-1px);
 }
 
 .btn-icon-danger {
-    background-color: var(--danger-color);
-    color: var(--white);
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
 }
 
 .btn-icon-danger:hover {
-    background-color: #c82333;
-    transform: scale(1.1);
+    background: var(--danger-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+/* Card Actions */
+.card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 0;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
 }
 
 /* Notification Animations */
@@ -2086,6 +1902,59 @@ input:checked + .slider:before {
         transform: translateX(100%);
         opacity: 0;
     }
+}
+
+/* Job Icon Mapping Styles */
+#jobIconMappingContainer {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 12px;
+    background-color: var(--light-bg);
+}
+
+.icon-category {
+    margin-bottom: 16px;
+}
+
+.icon-category h4 {
+    margin: 12px 0 8px 0;
+    font-size: 12px;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+}
+
+.icons-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.icon-button {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border-color);
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    color: var(--primary-color);
+}
+
+.icon-button:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 /* Enhanced Timeclock Cards */
@@ -2126,7 +1995,11 @@ input:checked + .slider:before {
 
 .card-actions {
     display: flex;
-    gap: var(--spacing-xs);
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
 }
 
 .btn-icon {

@@ -1,9 +1,44 @@
-// Global variables
-// Global variables
-let currentLanguage = 'nl';
+// Global variables and default settings
+const defaultSettings = {
+    notifications: {
+        email: false,
+        browser: false
+    },
+    colorTheme: {
+        primary: '#007bff',
+        secondary: '#6c757d',
+        accent: '#28a745'
+    },
+    restaurantName: 'My Restaurant',
+    defaultShiftDuration: 4,
+    useProfileIcon: true,
+    language: 'nl'
+};
+
+// Initialize global state with browser language detection
+let currentLanguage = localStorage.getItem('language') || detectBrowserLanguage() || defaultSettings.language;
+
+// Load FontAwesome job icons
+let fontAwesomeJobs = {};
+loadFontAwesomeJobs();
+
+// Language detection helper function
+function detectBrowserLanguage() {
+    try {
+        // Get browser language preferences
+        const browserLang = navigator.language || navigator.userLanguage;
+        const lang = browserLang.toLowerCase().split('-')[0];
+        
+        // Only return if it's one of our supported languages
+        return ['nl', 'fr'].includes(lang) ? lang : null;
+    } catch (error) {
+        console.error('Error detecting browser language:', error);
+        return null;
+    }
+}
 let currentWeek = new Date();
-let defaultShiftDuration = parseInt(localStorage.getItem('defaultShiftDuration')) || 4; // Default to 4 hours
-let useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon')) ?? true; // Default to true (icon)
+let defaultShiftDuration = parseInt(localStorage.getItem('defaultShiftDuration')) || defaultSettings.defaultShiftDuration;
+let useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon') ?? String(defaultSettings.useProfileIcon));
 
 // pc302Data is defined in data.js
 let employees = JSON.parse(localStorage.getItem('employees')) || [
@@ -316,6 +351,34 @@ function showSection(sectionId) {
             if (typeof loadEmployees === 'function') {
                 loadEmployees();
             }
+        } else if (sectionId === 'settings') {
+            // Load saved settings and show the first tab
+            loadSettings();
+            
+            // Ensure general tab is active by default
+            document.querySelectorAll('[data-settings-tab]').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+            
+            const generalTab = document.querySelector('[data-settings-tab="general"]');
+            const generalContent = document.querySelector('.settings-tab-content[data-settings-tab="general"]');
+            
+            if (generalTab) generalTab.classList.add('active');
+            if (generalContent) generalContent.classList.add('active');
+            
+            // Load notification settings
+            const notifications = JSON.parse(localStorage.getItem('notifications') || '{}');
+            if (document.getElementById('emailNotifications')) {
+                document.getElementById('emailNotifications').checked = notifications.email || false;
+            }
+            if (document.getElementById('browserNotifications')) {
+                document.getElementById('browserNotifications').checked = notifications.browser || false;
+            }
+            
+            // Load restaurant name
+            const restaurantName = localStorage.getItem('restaurantName');
+            if (restaurantName && document.getElementById('restaurantName')) {
+                document.getElementById('restaurantName').value = restaurantName;
+            }
         }
     } catch (error) {
         console.error('Error in showSection:', error);
@@ -325,49 +388,257 @@ function showSection(sectionId) {
 // Make sure showSection is globally available
 window.showSection = showSection;
 
+function initializeJobIconMapping() {
+    const container = document.getElementById('jobIconMappingContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+    
+    // Create a container for all icons organized by category
+    Object.keys(fontAwesomeJobs).forEach(categoryKey => {
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'icon-category';
+        
+        const categoryTitle = document.createElement('h4');
+        categoryTitle.textContent = categoryKey.replace('_', ' ').toUpperCase();
+        categoryTitle.style.cssText = `
+            margin: 12px 0 8px 0;
+            font-size: 12px;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        `;
+        categoryDiv.appendChild(categoryTitle);
+        
+        const iconsContainer = document.createElement('div');
+        iconsContainer.className = 'icons-container';
+        iconsContainer.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 16px;
+        `;
+        
+        fontAwesomeJobs[categoryKey].forEach(job => {
+            const button = document.createElement('button');
+            button.className = 'icon-button';
+            button.type = 'button';
+            button.innerHTML = `<i class="fas ${job.icon}"></i>`;
+            button.title = job.name;
+            button.dataset.icon = job.icon;
+            button.style.cssText = `
+                width: 36px;
+                height: 36px;
+                border: 1px solid var(--border-color);
+                background: white;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-size: 14px;
+                color: var(--primary-color);
+            `;
+            
+            button.addEventListener('mouseover', () => {
+                button.style.backgroundColor = 'var(--primary-color)';
+                button.style.color = 'white';
+                button.style.transform = 'scale(1.1)';
+            });
+            
+            button.addEventListener('mouseout', () => {
+                button.style.backgroundColor = 'white';
+                button.style.color = 'var(--primary-color)';
+                button.style.transform = 'scale(1)';
+            });
+            
+            button.onclick = (e) => {
+                e.preventDefault();
+                // Show a prompt to select which job title to map this icon to
+                showJobIconMappingModal(job.icon, job.name);
+            };
+            
+            iconsContainer.appendChild(button);
+        });
+        
+        categoryDiv.appendChild(iconsContainer);
+        container.appendChild(categoryDiv);
+    });
+}
+
+function showJobIconMappingModal(iconClass, iconName) {
+    // Get all unique job titles
+    const jobTitles = [...new Set(employees.map(emp => emp.jobTitle))];
+    
+    if (jobTitles.length === 0) {
+        showNotification('No employees found to map icons to', 'warning');
+        return;
+    }
+    
+    // Create a simple select prompt
+    const jobTitle = prompt(`Select a job title to map the ${iconName} icon to:\n\n` + 
+        jobTitles.map((title, index) => `${index + 1}. ${title}`).join('\n') + 
+        '\n\nEnter the number:');
+    
+    if (jobTitle && !isNaN(jobTitle)) {
+        const selectedIndex = parseInt(jobTitle) - 1;
+        if (selectedIndex >= 0 && selectedIndex < jobTitles.length) {
+            const selectedJobTitle = jobTitles[selectedIndex];
+            
+            // Save the mapping
+            const customIconMappings = JSON.parse(localStorage.getItem('jobFunctionIcons') || '{}');
+            customIconMappings[selectedJobTitle] = iconClass;
+            localStorage.setItem('jobFunctionIcons', JSON.stringify(customIconMappings));
+            
+            showNotification(`Icon mapped to ${selectedJobTitle}`, 'success');
+            loadEmployees(); // Refresh to apply new icons
+        } else {
+            showNotification('Invalid selection', 'error');
+        }
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the main application
+    // Initialize the entire application
     initializeApp();
-    
-    // Load saved settings on page load
-    // Load custom logo
-    const customLogo = localStorage.getItem('customLogo');
-    if (customLogo) {
-        document.getElementById('logoImg').src = customLogo;
-    }
-    
-    // Load color theme
-    const colorTheme = localStorage.getItem('colorTheme');
-    if (colorTheme) {
-        const theme = JSON.parse(colorTheme);
-        document.documentElement.style.setProperty('--primary-color', theme.primary);
-        document.documentElement.style.setProperty('--secondary-color', theme.secondary);
-        document.documentElement.style.setProperty('--accent-color', theme.accent);
-        
-        document.getElementById('primaryColor').value = theme.primary;
-        document.getElementById('secondaryColor').value = theme.secondary;
-        document.getElementById('accentColor').value = theme.accent;
-    }
-    
-    // Load default shift duration
-    const savedShiftDuration = localStorage.getItem('defaultShiftDuration');
-    if (savedShiftDuration !== null) {
-        defaultShiftDuration = parseInt(savedShiftDuration);
-    }
 
-    // Load profile picture setting
-    const savedProfilePictureSetting = localStorage.getItem('useProfileIcon');
-    if (savedProfilePictureSetting !== null) {
-        useProfileIcon = JSON.parse(savedProfilePictureSetting);
-    }
+    // Add keyboard shortcut for language switching
+    document.addEventListener('keydown', function(e) {
+        // Alt + L for language toggle
+        if (e.altKey && e.key.toLowerCase() === 'l') {
+            e.preventDefault();
+            toggleLanguage();
+        }
+    });
 });
+
+// Add keyboard shortcut info to language toggle button
+function initializeLanguageToggle() {
+    const langToggle = document.getElementById('langToggle');
+    if (langToggle) {
+        langToggle.textContent = currentLanguage === 'nl' ? 'FR' : 'NL';
+        langToggle.setAttribute('title', `${currentLanguage === 'nl' ? 'Changer en français' : 'Wijzigen naar Nederlands'} (Alt + L)`);
+        langToggle.setAttribute('aria-label', `${currentLanguage === 'nl' ? 'Changer la langue en français' : 'Taal wijzigen naar Nederlands'} (Alt + L)`);
+    }
+}
 
 async function initializeApp() {
     try {
         // Load PC302 data first (but don't block navigation if it fails)
         await loadPC302Data();
         
+        // Initialize language toggle button
+        initializeLanguageToggle();
+        
+        // Load all settings using the global defaultSettings
+        const settings = {
+            notifications: JSON.parse(localStorage.getItem('notifications') || JSON.stringify(defaultSettings.notifications)),
+            colorTheme: JSON.parse(localStorage.getItem('colorTheme') || JSON.stringify(defaultSettings.colorTheme)),
+            restaurantName: localStorage.getItem('restaurantName') || defaultSettings.restaurantName,
+            defaultShiftDuration: parseInt(localStorage.getItem('defaultShiftDuration')) || defaultSettings.defaultShiftDuration,
+            useProfileIcon: JSON.parse(localStorage.getItem('useProfileIcon') ?? String(defaultSettings.useProfileIcon)),
+            language: localStorage.getItem('language') || defaultSettings.language,
+            customLogo: localStorage.getItem('customLogo')
+        };
+
+        // Update global variables with loaded settings
+        currentLanguage = settings.language;
+        defaultShiftDuration = settings.defaultShiftDuration;
+        useProfileIcon = settings.useProfileIcon;
+
+        // Apply color theme
+        document.documentElement.style.setProperty('--primary-color', settings.colorTheme.primary);
+        document.documentElement.style.setProperty('--secondary-color', settings.colorTheme.secondary);
+        document.documentElement.style.setProperty('--accent-color', settings.colorTheme.accent);
+        
+        // Initialize color pickers
+        ['primaryColor', 'secondaryColor', 'accentColor'].forEach(colorId => {
+            const colorPicker = document.getElementById(colorId);
+            if (colorPicker) {
+                const color = colorId.replace('Color', '');
+                colorPicker.value = settings.colorTheme[color];
+            }
+        });
+        
+        // Load and apply logo if exists
+        if (customLogo) {
+            const logoImg = document.getElementById('logoImg');
+            if (logoImg) {
+                logoImg.src = customLogo;
+            }
+        }
+        
+        // Initialize all settings tabs
+        document.querySelectorAll('[data-settings-tab]').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('[data-settings-tab]').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const contentId = tab.dataset.settingsTab;
+                document.querySelector(`.settings-tab-content[data-settings-tab="${contentId}"]`).classList.add('active');
+            });
+        });
+        
+        // Initialize shift settings
+        defaultShiftDuration = parseInt(localStorage.getItem('defaultShiftDuration')) || 4;
+        useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon') ?? 'true');
+        
+        // Set up color pickers and their event listeners
+        ['primaryColor', 'secondaryColor', 'accentColor'].forEach(colorId => {
+            const colorPicker = document.getElementById(colorId);
+            if (colorPicker) {
+                colorPicker.addEventListener('input', (e) => {
+                    document.documentElement.style.setProperty(`--${colorId.replace('Color', '')}-color`, e.target.value);
+                });
+                colorPicker.addEventListener('change', () => {
+                    const colors = {
+                        primary: document.getElementById('primaryColor').value,
+                        secondary: document.getElementById('secondaryColor').value,
+                        accent: document.getElementById('accentColor').value
+                    };
+                    localStorage.setItem('colorTheme', JSON.stringify(colors));
+                });
+            }
+        });
+        
+        // Set up profile picture toggle
+        const profilePictureToggle = document.getElementById('profilePictureToggle');
+        if (profilePictureToggle) {
+            profilePictureToggle.checked = useProfileIcon;
+            profilePictureToggle.addEventListener('change', () => {
+                useProfileIcon = profilePictureToggle.checked;
+                updateProfilePictureToggleLabel();
+                localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
+                
+                // Show/hide job icon mapping based on toggle
+                const jobIconGroup = document.getElementById('jobIconMappingGroup');
+                if (jobIconGroup) {
+                    jobIconGroup.style.display = useProfileIcon ? 'block' : 'none';
+                }
+                
+                // Initialize job icon mapping if showing icons
+                if (useProfileIcon) {
+                    initializeJobIconMapping();
+                }
+                
+                loadEmployees(); // Refresh employee cards
+            });
+            
+            // Initial setup
+            const jobIconGroup = document.getElementById('jobIconMappingGroup');
+            if (jobIconGroup) {
+                jobIconGroup.style.display = useProfileIcon ? 'block' : 'none';
+            }
+            
+            if (useProfileIcon) {
+                initializeJobIconMapping();
+            }
+        }
+        
+        // Initialize all other components
         populateJobCategories();
         generateQRCode();
         loadEmployees();
@@ -406,6 +677,21 @@ async function loadPC302Data() {
         console.error('Failed to load PC302 data:', error);
         // pc302Data is already defined in data.js with complete data
         console.log('Using pc302Data from data.js file');
+    }
+}
+
+async function loadFontAwesomeJobs() {
+    try {
+        const response = await fetch('fontawesomejobs.json');
+        fontAwesomeJobs = await response.json();
+        console.log('FontAwesome jobs data loaded successfully');
+    } catch (error) {
+        console.error('Failed to load FontAwesome jobs data:', error);
+        fontAwesomeJobs = {
+            "general": [
+                { "name": "User", "icon": "fa-user" }
+            ]
+        };
     }
 }
 
@@ -579,12 +865,26 @@ function createEmployeeCard(employee) {
     const contractTypeClass = `contract-${employee.contractType}`;
     const localizedJobTitle = getLocalizedJobTitle(employee.jobTitle);
     
+    // Get contract type colors
+    const contractTypeColors = {
+        'full-time': '#4CAF50',
+        'part-time': '#2196F3', 
+        'flexi-job': '#FFEB3B',
+        'student': '#FF5722',
+        'extra': '#9E9E9E'
+    };
+    
+    const avatarColor = contractTypeColors[employee.contractType] || '#6b9d6b';
+    
+    // Get job function icon
+    const jobIcon = getJobFunctionIcon(employee.jobTitle);
+    
     card.innerHTML = `
         <div class="employee-card-content">
             <div class="employee-main-info">
                 <div class="employee-avatar">
                     ${useProfileIcon ? 
-                        `<i class="fas fa-user-circle"></i>` : 
+                        `<i class="fas ${jobIcon}" style="color: ${avatarColor}; font-size: 24px;"></i>` : 
                         `<span style="
                             display: flex;
                             align-items: center;
@@ -592,7 +892,7 @@ function createEmployeeCard(employee) {
                             width: 48px;
                             height: 48px;
                             border-radius: 50%;
-                            background-color: var(--accent-color);
+                            background-color: ${avatarColor};
                             color: white;
                             font-size: 1.2rem;
                             font-weight: 600;
@@ -607,28 +907,21 @@ function createEmployeeCard(employee) {
                         <i class="fas fa-id-badge"></i> ${getContractTypeLabel(employee.contractType)}
                     </span>
                 </div>
-                <div class="employee-controls">
-                    <div class="status-toggle">
-                        <label class="toggle-switch">
-                            <input type="checkbox" ${employee.active ? 'checked' : ''} onchange="toggleEmployeeStatus('${employee.id}')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="status-label ${employee.active ? 'active' : 'inactive'}">
-                            ${employee.active ? translations[currentLanguage].active || 'Active' : translations[currentLanguage].inactive || 'Inactive'}
-                        </span>
-                    </div>
-                    
-                    <div class="card-actions">
-                        <button class="btn-icon-secondary" onclick="editEmployee('${employee.id}')" title="${translations[currentLanguage].edit || 'Bewerken'}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon-secondary" onclick="copyEmployee('${employee.id}')" title="${translations[currentLanguage].copy || 'Kopiëren'}">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                        <button class="btn-icon-danger" onclick="deleteEmployee('${employee.id}')" title="${translations[currentLanguage].delete || 'Verwijderen'}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+            </div>
+            <div class="employee-controls">
+                <div class="card-actions">
+                    <button class="btn-icon-secondary" onclick="editEmployee('${employee.id}')" title="${translations[currentLanguage].edit || 'Bewerken'}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon-secondary" onclick="copyEmployee('${employee.id}')" title="${translations[currentLanguage].copy || 'Kopiëren'}">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon-${employee.active ? 'warning' : 'success'}" onclick="toggleEmployeeStatus('${employee.id}')" title="${employee.active ? (translations[currentLanguage].deactivate || 'Deactiveren') : (translations[currentLanguage].activate || 'Activeren')}">
+                        <i class="fas fa-${employee.active ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn-icon-danger" onclick="deleteEmployee('${employee.id}')" title="${translations[currentLanguage].delete || 'Verwijderen'}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -676,6 +969,40 @@ function getCivilStatusLabel(status) {
         'widowed': translations[currentLanguage].widowed
     };
     return labels[status] || status;
+}
+
+function getJobFunctionIcon(jobTitle) {
+    // Get custom icon mapping from localStorage if available
+    const customIconMappings = JSON.parse(localStorage.getItem('jobFunctionIcons') || '{}');
+    
+    // Check if there's a custom mapping for this job title
+    if (customIconMappings[jobTitle]) {
+        return customIconMappings[jobTitle];
+    }
+    
+    // Default mapping based on job title keywords
+    const titleLower = jobTitle.toLowerCase();
+    
+    // Check for specific job titles in our FontAwesome jobs data
+    for (const category in fontAwesomeJobs) {
+        for (const job of fontAwesomeJobs[category]) {
+            if (job.name.toLowerCase().includes(titleLower) || titleLower.includes(job.name.toLowerCase())) {
+                return job.icon;
+            }
+        }
+    }
+    
+    // Fallback to general keyword matching
+    if (titleLower.includes('chef') || titleLower.includes('cook')) return 'fa-utensils';
+    if (titleLower.includes('waiter') || titleLower.includes('server')) return 'fa-wine-glass';
+    if (titleLower.includes('manager')) return 'fa-user-tie';
+    if (titleLower.includes('cleaner') || titleLower.includes('cleaning')) return 'fa-broom';
+    if (titleLower.includes('reception') || titleLower.includes('front desk')) return 'fa-concierge-bell';
+    if (titleLower.includes('kitchen')) return 'fa-utensils';
+    if (titleLower.includes('bar')) return 'fa-wine-bottle';
+    
+    // Default icon
+    return 'fa-user';
 }
 
 function editEmployee(employeeId) {
@@ -1637,106 +1964,107 @@ function deleteAbsence(absenceId) {
 }
 
 // Settings functions
-function showSettingsCategory(categoryId) {
-    // Hide all settings categories
-    document.querySelectorAll('.settings-category').forEach(category => {
-        category.classList.remove('active');
-    });
-    
-    // Remove active class from all nav buttons
-    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected category
-    const targetCategory = document.getElementById(`${categoryId}-settings`);
-    if (targetCategory) {
-        targetCategory.classList.add('active');
-    }
-    
-    // Add active class to clicked nav button
-    const targetButton = document.querySelector(`[data-setting-category="${categoryId}"]`);
-    if (targetButton) {
-        targetButton.classList.add('active');
-    }
-}
-
-// Settings initialization and navigation
+// Settings functionality
 document.addEventListener('DOMContentLoaded', () => {
-    // Add click handlers for settings navigation
-    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const category = e.currentTarget.dataset.settingCategory;
-            showSettingsCategory(category);
+    // Initialize settings tabs
+    document.querySelectorAll('[data-settings-tab]').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('[data-settings-tab]').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding content
+            tab.classList.add('active');
+            const contentId = tab.dataset.settingsTab;
+            document.querySelector(`.settings-tab-content[data-settings-tab="${contentId}"]`).classList.add('active');
         });
     });
+
+    // Load settings when settings section is shown
+    loadSettings();
 });
 
-// Handle settings menu click from header
-function openSettings() {
-    showSection('settings');
-    
-    // Initialize settings values
+function loadSettings() {
     const defaultShiftDurationInput = document.getElementById('defaultShiftDuration');
     const profilePictureToggle = document.getElementById('profilePictureToggle');
-    const workdayStart = document.getElementById('workdayStart');
-    const workdayEnd = document.getElementById('workdayEnd');
-    const autoSchedule = document.getElementById('autoSchedule');
+    const languageSelect = document.getElementById('languageSelect');
     
-    // Business settings elements
-    const businessName = document.getElementById('businessName');
-    const vatNumber = document.getElementById('vatNumber');
-    const businessAddress = document.getElementById('businessAddress');
-    const businessEmail = document.getElementById('businessEmail');
-    const businessPhone = document.getElementById('businessPhone');
-    
-    // Load saved values from localStorage
     if (defaultShiftDurationInput) {
         defaultShiftDurationInput.value = defaultShiftDuration;
     }
     if (profilePictureToggle) {
         profilePictureToggle.checked = useProfileIcon;
+        updateProfilePictureToggleLabel();
     }
-    
-    // Load working hours
-    if (workdayStart) {
-        workdayStart.value = localStorage.getItem('workdayStart') || '09:00';
+    if (languageSelect) {
+        languageSelect.value = currentLanguage;
+        languageSelect.addEventListener('change', () => {
+            const newLang = languageSelect.value;
+            if (newLang !== currentLanguage) {
+                currentLanguage = newLang;
+                localStorage.setItem('language', newLang);
+                updateLanguage();
+                
+                // Update language toggle button
+                const langToggle = document.getElementById('langToggle');
+                if (langToggle) {
+                    langToggle.textContent = currentLanguage === 'nl' ? 'FR' : 'NL';
+                    langToggle.setAttribute('title', currentLanguage === 'nl' ? 'Changer en français' : 'Wijzigen naar Nederlands');
+                }
+                
+                // Show confirmation message
+                const message = currentLanguage === 'nl' ? 'Taal gewijzigd naar Nederlands' : 'Langue changée en français';
+                showNotification(message, 'success');
+            }
+        });
     }
-    if (workdayEnd) {
-        workdayEnd.value = localStorage.getItem('workdayEnd') || '22:00';
+}
+
+function saveSettings() {
+    const primaryColor = document.getElementById('primaryColor').value;
+    const secondaryColor = document.getElementById('secondaryColor').value;
+    const accentColor = document.getElementById('accentColor').value;
+    const defaultShiftDurationInput = document.getElementById('defaultShiftDuration');
+    const profilePictureToggle = document.getElementById('profilePictureToggle');
+    const restaurantName = document.getElementById('restaurantName').value;
+    const emailNotifications = document.getElementById('emailNotifications').checked;
+    const browserNotifications = document.getElementById('browserNotifications').checked;
+
+    // Apply and save colors
+    document.documentElement.style.setProperty('--primary-color', primaryColor);
+    document.documentElement.style.setProperty('--secondary-color', secondaryColor);
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+    localStorage.setItem('colorTheme', JSON.stringify({
+        primary: primaryColor,
+        secondary: secondaryColor,
+        accent: accentColor
+    }));
+
+    // Save restaurant info
+    if (restaurantName) {
+        localStorage.setItem('restaurantName', restaurantName);
     }
-    if (autoSchedule) {
-        autoSchedule.checked = JSON.parse(localStorage.getItem('autoSchedule') || 'false');
+
+    // Save shift settings
+    if (defaultShiftDurationInput) {
+        defaultShiftDuration = parseInt(defaultShiftDurationInput.value);
+        localStorage.setItem('defaultShiftDuration', defaultShiftDuration);
     }
-    
-    // Load business details
-    if (businessName) {
-        businessName.value = localStorage.getItem('businessName') || '';
+
+    // Save profile picture setting
+    if (profilePictureToggle) {
+        useProfileIcon = profilePictureToggle.checked;
+        localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
+        loadEmployees();
     }
-    if (vatNumber) {
-        vatNumber.value = localStorage.getItem('vatNumber') || '';
-    }
-    if (businessAddress) {
-        businessAddress.value = localStorage.getItem('businessAddress') || '';
-    }
-    if (businessEmail) {
-        businessEmail.value = localStorage.getItem('businessEmail') || '';
-    }
-    if (businessPhone) {
-        businessPhone.value = localStorage.getItem('businessPhone') || '';
-    }
-    
-    // Load color theme values if they exist
-    const colorTheme = localStorage.getItem('colorTheme');
-    if (colorTheme) {
-        const theme = JSON.parse(colorTheme);
-        document.getElementById('primaryColor').value = theme.primary;
-        document.getElementById('secondaryColor').value = theme.secondary;
-        document.getElementById('accentColor').value = theme.accent;
-    }
-    
-    // Ensure first category is active
-    showSettingsCategory('personalization');
+
+    // Save notification settings
+    localStorage.setItem('notifications', JSON.stringify({
+        email: emailNotifications,
+        browser: browserNotifications
+    }));
+
+    showNotification('Settings saved successfully!', 'success');
 }
 
 function handleLogoUpload(event) {
@@ -1752,68 +2080,38 @@ function handleLogoUpload(event) {
 }
 
 function applySettings() {
-    // Theme settings
     const primaryColor = document.getElementById('primaryColor').value;
     const secondaryColor = document.getElementById('secondaryColor').value;
     const accentColor = document.getElementById('accentColor').value;
-    
-    // Employee settings
     const defaultShiftDurationInput = document.getElementById('defaultShiftDuration');
     const profilePictureToggle = document.getElementById('profilePictureToggle');
     
-    // Planning settings
-    const workdayStart = document.getElementById('workdayStart');
-    const workdayEnd = document.getElementById('workdayEnd');
-    const autoSchedule = document.getElementById('autoSchedule');
-    
-    // Business settings
-    const businessName = document.getElementById('businessName');
-    const vatNumber = document.getElementById('vatNumber');
-    const businessAddress = document.getElementById('businessAddress');
-    const businessEmail = document.getElementById('businessEmail');
-    const businessPhone = document.getElementById('businessPhone');
-    
-    // Apply and save theme settings
+    // Apply colors to CSS custom properties
     document.documentElement.style.setProperty('--primary-color', primaryColor);
     document.documentElement.style.setProperty('--secondary-color', secondaryColor);
     document.documentElement.style.setProperty('--accent-color', accentColor);
     
+    // Save to localStorage
     localStorage.setItem('colorTheme', JSON.stringify({
         primary: primaryColor,
         secondary: secondaryColor,
         accent: accentColor
     }));
 
-    // Save employee settings
+    // Save default shift duration
     if (defaultShiftDurationInput) {
         defaultShiftDuration = parseInt(defaultShiftDurationInput.value);
         localStorage.setItem('defaultShiftDuration', defaultShiftDuration);
     }
+
+    // Save profile picture setting
     if (profilePictureToggle) {
         useProfileIcon = profilePictureToggle.checked;
         localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
         loadEmployees(); // Reload employees to apply new avatar setting
     }
     
-    // Save planning settings
-    if (workdayStart) {
-        localStorage.setItem('workdayStart', workdayStart.value);
-    }
-    if (workdayEnd) {
-        localStorage.setItem('workdayEnd', workdayEnd.value);
-    }
-    if (autoSchedule) {
-        localStorage.setItem('autoSchedule', autoSchedule.checked);
-    }
-    
-    // Save business settings
-    if (businessName) localStorage.setItem('businessName', businessName.value);
-    if (vatNumber) localStorage.setItem('vatNumber', vatNumber.value);
-    if (businessAddress) localStorage.setItem('businessAddress', businessAddress.value);
-    if (businessEmail) localStorage.setItem('businessEmail', businessEmail.value);
-    if (businessPhone) localStorage.setItem('businessPhone', businessPhone.value);
-    
-    showNotification('Settings saved successfully!', 'success');
+    closeSettings();
 }
 
 function updateProfilePictureToggleLabel() {
@@ -1833,9 +2131,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Language functions
 function toggleLanguage() {
+    // Toggle between Dutch and French
     currentLanguage = currentLanguage === 'nl' ? 'fr' : 'nl';
+    
+    // Save the new language preference
+    localStorage.setItem('language', currentLanguage);
+    
+    // Update the language toggle button with keyboard shortcut info
+    initializeLanguageToggle();
+    
+    // Update all translations and UI elements
     updateLanguage();
-    document.getElementById('langToggle').textContent = currentLanguage === 'nl' ? 'FR' : 'NL';
+    
+    // Show confirmation message in the new language
+    const message = currentLanguage === 'nl' ? 'Taal gewijzigd naar Nederlands' : 'Langue changée en français';
+    showNotification(message, 'success');
 }
 
 function updateLanguage() {
@@ -1854,6 +2164,21 @@ function updateLanguage() {
     
     // Update employee pool if on planning section
     loadEmployeePool();
+    
+    // Update language toggle button and dropdown
+    initializeLanguageToggle();
+    const languageSelect = document.getElementById('languageSelect');
+    if (languageSelect) {
+        languageSelect.value = currentLanguage;
+    }
+    
+    // Update keyboard shortcut hint in language settings
+    const languageShortcutHint = document.getElementById('languageShortcutHint');
+    if (languageShortcutHint) {
+        languageShortcutHint.textContent = currentLanguage === 'nl' ? 
+            'Gebruik Alt + L om snel te wisselen tussen talen' : 
+            'Utilisez Alt + L pour basculer rapidement entre les langues';
+    }
 }
 
 // Utility functions

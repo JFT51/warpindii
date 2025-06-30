@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Using Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+
+    <h1>Employee View</h1>
+
+    <div class="employee-card">
+        <div class="employee-main-info">
+            <div class="employee-avatar">
+                <span>JD</span>
+                <!-- <img src="path/to/icon.png" alt="Profile Icon"> -->
+            </div>
+            <div class="employee-details">
+                <h3>John Doe</h3>
+                <p>Waiter (V)</p>
+            </div>
+            <div class="employee-controls">
+                <button class="control-btn" title="Edit"><i class="fas fa-pencil-alt"></i></button>
+                <button class="control-btn" title="Delete"><i class="fas fa-trash-alt"></i></button>
+                <button class="control-btn" title="Add to Planner"><i class="fas fa-calendar-plus"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h2>Planner & Display Settings</h2>
+        <div class="setting-item">
+            <label for="default-shift-time">Default shift time for dragged employees (hours):</label>
+            <input type="number" id="default-shift-time" value="4" min="1" max="12">
+        </div>
+        <div class="setting-item">
+            <label>Profile Picture Display:</label>
+            <div class="toggle-switch">
+                <input type="radio" id="show-initials" name="avatar-style" value="initials" checked>
+                <label for="show-initials">Initials</label>
+                <input type="radio" id="show-icon" name="avatar-style" value="icon">
+                <label for="show-icon">Profile Icon</label>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

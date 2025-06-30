@@ -1,0 +1,73 @@
+{
+  "general": [
+    { "name": "User", "icon": "fa-user" }
+  ],
+  "office_business": [
+    { "name": "Manager", "icon": "fa-user-tie" },
+    { "name": "General Office", "icon": "fa-briefcase" },
+    { "name": "Administration", "icon": "fa-building" },
+    { "name": "Project Manager", "icon": "fa-calendar-check" },
+    { "name": "Secretary", "icon": "fa-clipboard" }
+  ],
+  "developer_it": [
+    { "name": "Software Developer", "icon": "fa-laptop-code" },
+    { "name": "Programmer", "icon": "fa-code" },
+    { "name": "Network Engineer", "icon": "fa-network-wired" },
+    { "name": "Database Administrator", "icon": "fa-database" },
+    { "name": "Cybersecurity", "icon": "fa-shield-alt" }
+  ],
+  "healthcare": [
+    { "name": "Nurse", "icon": "fa-user-nurse" },
+    { "name": "Doctor", "icon": "fa-user-md" },
+    { "name": "Paramedic", "icon": "fa-briefcase-medical" },
+    { "name": "Healthcare", "icon": "fa-heartbeat" }
+  ],
+  "logistics_transport": [
+    { "name": "Truck Driver", "icon": "fa-truck" },
+    { "name": "Courier", "icon": "fa-shipping-fast" },
+    { "name": "Aviation", "icon": "fa-plane" },
+    { "name": "Maritime", "icon": "fa-ship" },
+    { "name": "Warehouse Worker", "icon": "fa-warehouse" }
+  ],
+  "construction_technical": [
+    { "name": "Construction Worker", "icon": "fa-hard-hat" },
+    { "name": "Technician", "icon": "fa-tools" },
+    { "name": "Mechanic", "icon": "fa-wrench" },
+    { "name": "Carpenter", "icon": "fa-hammer" },
+    { "name": "Electrician", "icon": "fa-bolt" }
+  ],
+  "education": [
+    { "name": "Teacher", "icon": "fa-chalkboard-teacher" },
+    { "name": "Librarian", "icon": "fa-book" },
+    { "name": "Education", "icon": "fa-graduation-cap" }
+  ],
+  "creative_media": [
+    { "name": "Photographer", "icon": "fa-camera" },
+    { "name": "Voice/Media", "icon": "fa-microphone" },
+    { "name": "Designer", "icon": "fa-paint-brush" },
+    { "name": "Video Editor", "icon": "fa-film" },
+    { "name": "Writer", "icon": "fa-pen-nib" }
+  ],
+  "hospitality": [
+    { "name": "Chef", "icon": "fa-utensils" },
+    { "name": "Barista", "icon": "fa-mug-hot" },
+    { "name": "Hotel Staff", "icon": "fa-concierge-bell" },
+    { "name": "Waiter", "icon": "fa-wine-glass" }
+  ],
+  "retail_sales": [
+    { "name": "Retail", "icon": "fa-store" },
+    { "name": "Sales/Marketing", "icon": "fa-tags" },
+    { "name": "Cashier", "icon": "fa-cash-register" },
+    { "name": "Sales Representative", "icon": "fa-handshake" }
+  ],
+  "security": [
+    { "name": "Security Guard", "icon": "fa-user-shield" },
+    { "name": "General Security", "icon": "fa-lock" },
+    { "name": "Access Control", "icon": "fa-key" }
+  ],
+  "science_engineering": [
+    { "name": "Laboratory", "icon": "fa-flask" },
+    { "name": "Engineer", "icon": "fa-cogs" },
+    { "name": "Researcher", "icon": "fa-microscope" }
+  ]
+}
