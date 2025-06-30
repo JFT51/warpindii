@@ -1,6 +1,10 @@
 // Global variables
+// Global variables
 let currentLanguage = 'nl';
 let currentWeek = new Date();
+let defaultShiftDuration = parseInt(localStorage.getItem('defaultShiftDuration')) || 4; // Default to 4 hours
+let useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon')) ?? true; // Default to true (icon)
+
 // pc302Data is defined in data.js
 let employees = JSON.parse(localStorage.getItem('employees')) || [
     {
@@ -345,6 +349,18 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('secondaryColor').value = theme.secondary;
         document.getElementById('accentColor').value = theme.accent;
     }
+    
+    // Load default shift duration
+    const savedShiftDuration = localStorage.getItem('defaultShiftDuration');
+    if (savedShiftDuration !== null) {
+        defaultShiftDuration = parseInt(savedShiftDuration);
+    }
+
+    // Load profile picture setting
+    const savedProfilePictureSetting = localStorage.getItem('useProfileIcon');
+    if (savedProfilePictureSetting !== null) {
+        useProfileIcon = JSON.parse(savedProfilePictureSetting);
+    }
 });
 
 async function initializeApp() {
@@ -567,7 +583,22 @@ function createEmployeeCard(employee) {
         <div class="employee-card-content">
             <div class="employee-main-info">
                 <div class="employee-avatar">
-                    <i class="fas fa-user-circle"></i>
+                    ${useProfileIcon ? 
+                        `<i class="fas fa-user-circle"></i>` : 
+                        `<span style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 48px;
+                            height: 48px;
+                            border-radius: 50%;
+                            background-color: var(--accent-color);
+                            color: white;
+                            font-size: 1.2rem;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                        ">${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}</span>`
+                    }
                 </div>
                 <div class="employee-details">
                     <h4 class="employee-name">${employee.firstName} ${employee.lastName}</h4>
@@ -576,29 +607,28 @@ function createEmployeeCard(employee) {
                         <i class="fas fa-id-badge"></i> ${getContractTypeLabel(employee.contractType)}
                     </span>
                 </div>
-            </div>
-            
-            <div class="employee-controls">
-                <div class="status-toggle">
-                    <label class="toggle-switch">
-                        <input type="checkbox" ${employee.active ? 'checked' : ''} onchange="toggleEmployeeStatus('${employee.id}')">
-                        <span class="toggle-slider"></span>
-                    </label>
-                    <span class="status-label ${employee.active ? 'active' : 'inactive'}">
-                        ${employee.active ? translations[currentLanguage].active || 'Active' : translations[currentLanguage].inactive || 'Inactive'}
-                    </span>
-                </div>
-                
-                <div class="card-actions">
-                    <button class="btn-icon-secondary" onclick="editEmployee('${employee.id}')" title="${translations[currentLanguage].edit || 'Bewerken'}">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-icon-secondary" onclick="copyEmployee('${employee.id}')" title="${translations[currentLanguage].copy || 'Kopiëren'}">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                    <button class="btn-icon-danger" onclick="deleteEmployee('${employee.id}')" title="${translations[currentLanguage].delete || 'Verwijderen'}">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="employee-controls">
+                    <div class="status-toggle">
+                        <label class="toggle-switch">
+                            <input type="checkbox" ${employee.active ? 'checked' : ''} onchange="toggleEmployeeStatus('${employee.id}')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="status-label ${employee.active ? 'active' : 'inactive'}">
+                            ${employee.active ? translations[currentLanguage].active || 'Active' : translations[currentLanguage].inactive || 'Inactive'}
+                        </span>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <button class="btn-icon-secondary" onclick="editEmployee('${employee.id}')" title="${translations[currentLanguage].edit || 'Bewerken'}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-icon-secondary" onclick="copyEmployee('${employee.id}')" title="${translations[currentLanguage].copy || 'Kopiëren'}">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="btn-icon-danger" onclick="deleteEmployee('${employee.id}')" title="${translations[currentLanguage].delete || 'Verwijderen'}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -962,7 +992,7 @@ function createShiftBar(employeeId, day, hour, cell) {
     shiftBar.dataset.employeeId = employeeId;
     shiftBar.dataset.day = day;
     shiftBar.dataset.startHour = hour;
-    shiftBar.dataset.endHour = hour + 1;
+    shiftBar.dataset.endHour = hour + defaultShiftDuration; /* Use defaultShiftDuration */
     
     const borderColors = {
         'full-time': '#4CAF50',
@@ -1607,12 +1637,106 @@ function deleteAbsence(absenceId) {
 }
 
 // Settings functions
-function openSettings() {
-    document.getElementById('settingsModal').style.display = 'block';
+function showSettingsCategory(categoryId) {
+    // Hide all settings categories
+    document.querySelectorAll('.settings-category').forEach(category => {
+        category.classList.remove('active');
+    });
+    
+    // Remove active class from all nav buttons
+    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected category
+    const targetCategory = document.getElementById(`${categoryId}-settings`);
+    if (targetCategory) {
+        targetCategory.classList.add('active');
+    }
+    
+    // Add active class to clicked nav button
+    const targetButton = document.querySelector(`[data-setting-category="${categoryId}"]`);
+    if (targetButton) {
+        targetButton.classList.add('active');
+    }
 }
 
-function closeSettings() {
-    document.getElementById('settingsModal').style.display = 'none';
+// Settings initialization and navigation
+document.addEventListener('DOMContentLoaded', () => {
+    // Add click handlers for settings navigation
+    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const category = e.currentTarget.dataset.settingCategory;
+            showSettingsCategory(category);
+        });
+    });
+});
+
+// Handle settings menu click from header
+function openSettings() {
+    showSection('settings');
+    
+    // Initialize settings values
+    const defaultShiftDurationInput = document.getElementById('defaultShiftDuration');
+    const profilePictureToggle = document.getElementById('profilePictureToggle');
+    const workdayStart = document.getElementById('workdayStart');
+    const workdayEnd = document.getElementById('workdayEnd');
+    const autoSchedule = document.getElementById('autoSchedule');
+    
+    // Business settings elements
+    const businessName = document.getElementById('businessName');
+    const vatNumber = document.getElementById('vatNumber');
+    const businessAddress = document.getElementById('businessAddress');
+    const businessEmail = document.getElementById('businessEmail');
+    const businessPhone = document.getElementById('businessPhone');
+    
+    // Load saved values from localStorage
+    if (defaultShiftDurationInput) {
+        defaultShiftDurationInput.value = defaultShiftDuration;
+    }
+    if (profilePictureToggle) {
+        profilePictureToggle.checked = useProfileIcon;
+    }
+    
+    // Load working hours
+    if (workdayStart) {
+        workdayStart.value = localStorage.getItem('workdayStart') || '09:00';
+    }
+    if (workdayEnd) {
+        workdayEnd.value = localStorage.getItem('workdayEnd') || '22:00';
+    }
+    if (autoSchedule) {
+        autoSchedule.checked = JSON.parse(localStorage.getItem('autoSchedule') || 'false');
+    }
+    
+    // Load business details
+    if (businessName) {
+        businessName.value = localStorage.getItem('businessName') || '';
+    }
+    if (vatNumber) {
+        vatNumber.value = localStorage.getItem('vatNumber') || '';
+    }
+    if (businessAddress) {
+        businessAddress.value = localStorage.getItem('businessAddress') || '';
+    }
+    if (businessEmail) {
+        businessEmail.value = localStorage.getItem('businessEmail') || '';
+    }
+    if (businessPhone) {
+        businessPhone.value = localStorage.getItem('businessPhone') || '';
+    }
+    
+    // Load color theme values if they exist
+    const colorTheme = localStorage.getItem('colorTheme');
+    if (colorTheme) {
+        const theme = JSON.parse(colorTheme);
+        document.getElementById('primaryColor').value = theme.primary;
+        document.getElementById('secondaryColor').value = theme.secondary;
+        document.getElementById('accentColor').value = theme.accent;
+    }
+    
+    // Ensure first category is active
+    showSettingsCategory('personalization');
 }
 
 function handleLogoUpload(event) {
@@ -1628,24 +1752,84 @@ function handleLogoUpload(event) {
 }
 
 function applySettings() {
+    // Theme settings
     const primaryColor = document.getElementById('primaryColor').value;
     const secondaryColor = document.getElementById('secondaryColor').value;
     const accentColor = document.getElementById('accentColor').value;
     
-    // Apply colors to CSS custom properties
+    // Employee settings
+    const defaultShiftDurationInput = document.getElementById('defaultShiftDuration');
+    const profilePictureToggle = document.getElementById('profilePictureToggle');
+    
+    // Planning settings
+    const workdayStart = document.getElementById('workdayStart');
+    const workdayEnd = document.getElementById('workdayEnd');
+    const autoSchedule = document.getElementById('autoSchedule');
+    
+    // Business settings
+    const businessName = document.getElementById('businessName');
+    const vatNumber = document.getElementById('vatNumber');
+    const businessAddress = document.getElementById('businessAddress');
+    const businessEmail = document.getElementById('businessEmail');
+    const businessPhone = document.getElementById('businessPhone');
+    
+    // Apply and save theme settings
     document.documentElement.style.setProperty('--primary-color', primaryColor);
     document.documentElement.style.setProperty('--secondary-color', secondaryColor);
     document.documentElement.style.setProperty('--accent-color', accentColor);
     
-    // Save to localStorage
     localStorage.setItem('colorTheme', JSON.stringify({
         primary: primaryColor,
         secondary: secondaryColor,
         accent: accentColor
     }));
+
+    // Save employee settings
+    if (defaultShiftDurationInput) {
+        defaultShiftDuration = parseInt(defaultShiftDurationInput.value);
+        localStorage.setItem('defaultShiftDuration', defaultShiftDuration);
+    }
+    if (profilePictureToggle) {
+        useProfileIcon = profilePictureToggle.checked;
+        localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
+        loadEmployees(); // Reload employees to apply new avatar setting
+    }
     
-    closeSettings();
+    // Save planning settings
+    if (workdayStart) {
+        localStorage.setItem('workdayStart', workdayStart.value);
+    }
+    if (workdayEnd) {
+        localStorage.setItem('workdayEnd', workdayEnd.value);
+    }
+    if (autoSchedule) {
+        localStorage.setItem('autoSchedule', autoSchedule.checked);
+    }
+    
+    // Save business settings
+    if (businessName) localStorage.setItem('businessName', businessName.value);
+    if (vatNumber) localStorage.setItem('vatNumber', vatNumber.value);
+    if (businessAddress) localStorage.setItem('businessAddress', businessAddress.value);
+    if (businessEmail) localStorage.setItem('businessEmail', businessEmail.value);
+    if (businessPhone) localStorage.setItem('businessPhone', businessPhone.value);
+    
+    showNotification('Settings saved successfully!', 'success');
 }
+
+function updateProfilePictureToggleLabel() {
+    const labelElement = document.getElementById('profilePictureLabel');
+    if (labelElement) {
+        labelElement.textContent = useProfileIcon ? translations[currentLanguage].profileIcon : translations[currentLanguage].initials;
+    }
+}
+
+// Add event listener for the toggle
+document.addEventListener('DOMContentLoaded', () => {
+    const profilePictureToggle = document.getElementById('profilePictureToggle');
+    if (profilePictureToggle) {
+        profilePictureToggle.addEventListener('change', updateProfilePictureToggleLabel);
+    }
+});
 
 // Language functions
 function toggleLanguage() {
@@ -1968,4 +2152,3 @@ function handleShiftDrop(e) {
         bar.classList.remove('dragging');
     });
 }
-

@@ -56,6 +56,10 @@
                 <i class="fas fa-calendar-times"></i>
                 <span data-key="absences">Afwezigheden</span>
             </button>
+            <button class="nav-btn" onclick="showSection('settings')" data-section="settings">
+                <i class="fas fa-cog"></i>
+                <span data-key="settings">Instellingen</span>
+            </button>
         </nav>
 
         <!-- Main Content -->
@@ -621,42 +625,180 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 data-key="settingsTitle">Instellingen</h3>
-                <span class="close" onclick="closeSettings()">&times;</span>
+    <!-- Settings Section -->
+    <section id="settings" class="content-section">
+        <div class="section-header">
+            <div class="section-title">
+                <h2><i class="fas fa-cog"></i> <span data-key="settingsTitle">Instellingen</span></h2>
+                <p class="section-subtitle" data-key="settingsSubtitle">Beheer applicatie instellingen</p>
             </div>
-            <div class="settings-content">
-                <div class="form-group">
-                    <label data-key="uploadLogo">Logo Uploaden</label>
-                    <input type="file" id="logoUpload" accept="image/*" onchange="handleLogoUpload(event)">
+        </div>
+        <div class="settings-container">
+                <nav class="settings-nav">
+                    <button class="settings-nav-btn active" data-setting-category="personalization">
+                        <i class="fas fa-palette"></i> <span data-key="personalizationSettings">Personalisatie</span>
+                    </button>
+                    <button class="settings-nav-btn" data-setting-category="planning">
+                        <i class="fas fa-calendar-alt"></i> <span data-key="planningSettings">Planning</span>
+                    </button>
+                    <button class="settings-nav-btn" data-setting-category="display">
+                        <i class="fas fa-desktop"></i> <span data-key="displaySettings">Weergave</span>
+                    </button>
+                    <button class="settings-nav-btn" data-setting-category="language">
+                        <i class="fas fa-language"></i> <span data-key="languageSettings">Taal</span>
+                    </button>
+                    <button class="settings-nav-btn" data-setting-category="business">
+                        <i class="fas fa-building"></i> <span data-key="businessSettings">Bedrijfsdetails</span>
+                    </button>
+                </nav>
+            <div class="settings-content-area">
+                <div id="personalization-settings" class="settings-category active">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-paint-brush"></i> <span data-key="themeAndStyle">Thema & Stijl</span></h3>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="uploadLogo">Logo Uploaden</label>
+                            <input type="file" id="logoUpload" accept="image/*" onchange="handleLogoUpload(event)">
+                        </div>
+                        <div class="form-group">
+                            <label data-key="colorTheme">Kleurthema</label>
+                            <div class="color-inputs">
+                                <div class="color-input-group">
+                                    <label data-key="primaryColor">Primaire Kleur</label>
+                                    <input type="color" id="primaryColor" value="#2d5a2d">
+                                </div>
+                                <div class="color-input-group">
+                                    <label data-key="secondaryColor">Secundaire Kleur</label>
+                                    <input type="color" id="secondaryColor" value="#4a7c4a">
+                                </div>
+                                <div class="color-input-group">
+                                    <label data-key="accentColor">Accent Kleur</label>
+                                    <input type="color" id="accentColor" value="#6b9d6b">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label data-key="colorTheme">Kleurthema</label>
-                    <div class="color-inputs">
-                        <div class="color-input-group">
-                            <label data-key="primaryColor">Primaire Kleur</label>
-                            <input type="color" id="primaryColor" value="#2d5a2d">
+
+                <div id="planning-settings" class="settings-category">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-sliders-h"></i> <span data-key="planningPreferences">Planning Voorkeuren</span></h3>
                         </div>
-                        <div class="color-input-group">
-                            <label data-key="secondaryColor">Secundaire Kleur</label>
-                            <input type="color" id="secondaryColor" value="#4a7c4a">
+                        <div class="form-group">
+                            <label for="defaultShiftDuration" data-key="defaultShiftDuration">Standaard Shift Duur</label>
+                            <input type="number" id="defaultShiftDuration" class="settings-input-number" value="4" min="1" max="24">
+                            <span class="input-suffix">uren</span>
                         </div>
-                        <div class="color-input-group">
-                            <label data-key="accentColor">Accent Kleur</label>
-                            <input type="color" id="accentColor" value="#6b9d6b">
+                        <div class="form-group">
+                            <label data-key="workingHours">Werktijden</label>
+                            <div class="time-range">
+                                <div class="time-input">
+                                    <label data-key="startTime">Start</label>
+                                    <input type="time" id="workdayStart" value="09:00">
+                                </div>
+                                <div class="time-input">
+                                    <label data-key="endTime">Einde</label>
+                                    <input type="time" id="workdayEnd" value="22:00">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="autoSchedule">
+                                <span data-key="autoSchedule">Automatisch inplannen toestaan</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="display-settings" class="settings-category">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-eye"></i> <span data-key="displayOptions">Weergave Opties</span></h3>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="profilePictureType">Profielafbeelding Type</label>
+                            <div class="settings-toggle">
+                                <span data-key="initials">Initialen</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="profilePictureToggle">
+                                    <span class="slider round"></span>
+                                </label>
+                                <span data-key="profileIcon">Icoon</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="compactView">
+                                <span data-key="compactView">Compacte weergave</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="language-settings" class="settings-category">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-globe"></i> <span data-key="languageAndLocale">Taal & Regio</span></h3>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="interfaceLanguage">Interface Taal</label>
+                            <select id="interfaceLanguage">
+                                <option value="nl">Nederlands</option>
+                                <option value="fr">Frans</option>
+                                <option value="en">Engels</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="dateFormat">Datum Formaat</label>
+                            <select id="dateFormat">
+                                <option value="dd/mm/yyyy">DD/MM/YYYY</option>
+                                <option value="mm/dd/yyyy">MM/DD/YYYY</option>
+                                <option value="yyyy-mm-dd">YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="timeFormat">Tijd Formaat</label>
+                            <select id="timeFormat">
+                                <option value="24">24-uur</option>
+                                <option value="12">12-uur (AM/PM)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="business-settings" class="settings-category">
+                    <div class="settings-section">
+                        <div class="settings-header">
+                            <h3><i class="fas fa-building"></i> <span data-key="businessInformation">Bedrijfsinformatie</span></h3>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="businessName">Bedrijfsnaam</label>
+                            <input type="text" id="businessName">
+                        </div>
+                        <div class="form-group">
+                            <label data-key="vatNumber">BTW Nummer</label>
+                            <input type="text" id="vatNumber">
+                        </div>
+                        <div class="form-group">
+                            <label data-key="address">Adres</label>
+                            <textarea id="businessAddress" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="contactInformation">Contact Informatie</label>
+                            <input type="email" id="businessEmail" placeholder="E-mail">
+                            <input type="tel" id="businessPhone" placeholder="Telefoon">
                         </div>
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeSettings()" data-key="cancel">Annuleren</button>
                     <button type="button" class="btn-primary" onclick="applySettings()" data-key="apply">Toepassen</button>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <script src="translations.js"></script>
     <script src="data.js"></script>
