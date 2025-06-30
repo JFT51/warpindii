@@ -251,8 +251,8 @@ button:hover {
 /* Employee Cards */
 .employees-grid {
     display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
 }
 
 /* Contract type background colors (15% opacity) */
@@ -297,22 +297,22 @@ button:hover {
 }
 
 .employee-card-content {
-    padding: 16px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 8px;
     height: 100%;
 }
 
 .employee-main-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     flex: 1;
 }
 
 .employee-avatar {
-    font-size: 32px;
+    font-size: 24px;
     color: var(--primary-color);
     opacity: 0.8;
     flex-shrink: 0;
@@ -323,29 +323,29 @@ button:hover {
 }
 
 .employee-name {
-    margin: 0 0 4px 0;
-    font-size: 16px;
+    margin: 0 0 2px 0;
+    font-size: 14px;
     font-weight: 600;
     color: var(--primary-color);
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
 .employee-job {
-    margin: 0 0 6px 0;
+    margin: 0 0 3px 0;
     color: #555;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 500;
-    line-height: 1.2;
+    line-height: 1.1;
 }
 
 .employee-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 8px 10px;
     background-color: rgba(255, 255, 255, 0.7);
     border-top: 1px solid rgba(0, 0, 0, 0.1);
-    margin: 16px -16px -16px -16px;
+    margin: 8px -10px -10px -10px;
 }
 
 .status-toggle {
@@ -460,11 +460,11 @@ input:checked + .toggle-slider:before {
 .employee-card .contract-type {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    margin-top: 10px;
-    padding: 5px;
+    gap: 2px;
+    margin-top: 4px;
+    padding: 2px 6px;
     border-radius: 4px;
-    font-size: 0.8em;
+    font-size: 0.75em;
 }
 
 .contract-full-time { background-color: #4CAF50; color: #fff; }
