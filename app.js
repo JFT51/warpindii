@@ -20,6 +20,47 @@ let currentLanguage = localStorage.getItem('language') || detectBrowserLanguage(
 
 // Load FontAwesome job icons
 let fontAwesomeJobs = {};
+
+// Initialize FontAwesome jobs with fallback data immediately
+fontAwesomeJobs = {
+    "general": [
+        { "name": "User", "icon": "fa-user" }
+    ],
+    "office_business": [
+        { "name": "Manager", "icon": "fa-user-tie" },
+        { "name": "General Office", "icon": "fa-briefcase" },
+        { "name": "Administration", "icon": "fa-building" },
+        { "name": "Project Manager", "icon": "fa-calendar-check" },
+        { "name": "Secretary", "icon": "fa-clipboard" }
+    ],
+    "developer_it": [
+        { "name": "Software Developer", "icon": "fa-laptop-code" },
+        { "name": "Programmer", "icon": "fa-code" },
+        { "name": "Network Engineer", "icon": "fa-network-wired" },
+        { "name": "Database Administrator", "icon": "fa-database" },
+        { "name": "Cybersecurity", "icon": "fa-shield-alt" }
+    ],
+    "healthcare": [
+        { "name": "Nurse", "icon": "fa-user-nurse" },
+        { "name": "Doctor", "icon": "fa-user-md" },
+        { "name": "Paramedic", "icon": "fa-briefcase-medical" },
+        { "name": "Healthcare", "icon": "fa-heartbeat" }
+    ],
+    "hospitality": [
+        { "name": "Chef", "icon": "fa-utensils" },
+        { "name": "Barista", "icon": "fa-mug-hot" },
+        { "name": "Hotel Staff", "icon": "fa-concierge-bell" },
+        { "name": "Waiter", "icon": "fa-wine-glass" }
+    ],
+    "retail_sales": [
+        { "name": "Retail", "icon": "fa-store" },
+        { "name": "Sales/Marketing", "icon": "fa-tags" },
+        { "name": "Cashier", "icon": "fa-cash-register" },
+        { "name": "Sales Representative", "icon": "fa-handshake" }
+    ]
+};
+
+// Load additional FontAwesome jobs from file
 loadFontAwesomeJobs();
 
 // Language detection helper function
@@ -390,23 +431,57 @@ window.showSection = showSection;
 
 function initializeJobIconMapping() {
     const container = document.getElementById('jobIconMappingContainer');
-    if (!container) return;
+    if (!container) {
+        console.warn('jobIconMappingContainer not found');
+        return;
+    }
+
+    // Check if fontAwesome jobs data is available
+    if (!fontAwesomeJobs || Object.keys(fontAwesomeJobs).length === 0) {
+        console.warn('FontAwesome jobs data not available');
+        container.innerHTML = '<p style="text-align: center; color: var(--light-text);">Loading icons...</p>';
+        return;
+    }
 
     container.innerHTML = '';
     
+    // Add a header explaining how to use the icon mapping
+    const instructionDiv = document.createElement('div');
+    instructionDiv.style.cssText = `
+        padding: 12px;
+        background: var(--light-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: var(--light-text);
+        text-align: center;
+    `;
+    instructionDiv.innerHTML = `
+        <i class="fas fa-info-circle" style="color: var(--info-color); margin-right: 8px;"></i>
+        Click an icon to map it to a specific job title
+    `;
+    container.appendChild(instructionDiv);
+    
     // Create a container for all icons organized by category
     Object.keys(fontAwesomeJobs).forEach(categoryKey => {
+        if (!fontAwesomeJobs[categoryKey] || !Array.isArray(fontAwesomeJobs[categoryKey])) {
+            return; // Skip invalid categories
+        }
+        
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'icon-category';
         
         const categoryTitle = document.createElement('h4');
-        categoryTitle.textContent = categoryKey.replace('_', ' ').toUpperCase();
+        categoryTitle.textContent = categoryKey.replace(/_/g, ' ').toUpperCase();
         categoryTitle.style.cssText = `
             margin: 12px 0 8px 0;
             font-size: 12px;
             color: var(--primary-color);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
         `;
         categoryDiv.appendChild(categoryTitle);
         
@@ -420,6 +495,10 @@ function initializeJobIconMapping() {
         `;
         
         fontAwesomeJobs[categoryKey].forEach(job => {
+            if (!job || !job.icon || !job.name) {
+                return; // Skip invalid job entries
+            }
+            
             const button = document.createElement('button');
             button.className = 'icon-button';
             button.type = 'button';
@@ -455,48 +534,121 @@ function initializeJobIconMapping() {
             
             button.onclick = (e) => {
                 e.preventDefault();
-                // Show a prompt to select which job title to map this icon to
                 showJobIconMappingModal(job.icon, job.name);
             };
             
             iconsContainer.appendChild(button);
         });
         
-        categoryDiv.appendChild(iconsContainer);
-        container.appendChild(categoryDiv);
+        if (iconsContainer.children.length > 0) {
+            categoryDiv.appendChild(iconsContainer);
+            container.appendChild(categoryDiv);
+        }
     });
+    
+    console.log('Job icon mapping initialized with', Object.keys(fontAwesomeJobs).length, 'categories');
 }
 
 function showJobIconMappingModal(iconClass, iconName) {
-    // Get all unique job titles
-    const jobTitles = [...new Set(employees.map(emp => emp.jobTitle))];
+    // Get all unique job titles from current employees
+    const jobTitles = [...new Set(employees.map(emp => emp.jobTitle))].filter(title => title && title.trim());
     
     if (jobTitles.length === 0) {
-        showNotification('No employees found to map icons to', 'warning');
+        showNotification('No employees found to map icons to. Add some employees first.', 'warning');
         return;
     }
     
-    // Create a simple select prompt
-    const jobTitle = prompt(`Select a job title to map the ${iconName} icon to:\n\n` + 
-        jobTitles.map((title, index) => `${index + 1}. ${title}`).join('\n') + 
-        '\n\nEnter the number:');
+    // Create a more user-friendly modal instead of a simple prompt
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
     
-    if (jobTitle && !isNaN(jobTitle)) {
-        const selectedIndex = parseInt(jobTitle) - 1;
-        if (selectedIndex >= 0 && selectedIndex < jobTitles.length) {
-            const selectedJobTitle = jobTitles[selectedIndex];
-            
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 500px;
+        overflow-y: auto;
+    `;
+    
+    modalContent.innerHTML = `
+        <div style="text-align: center; margin-bottom: 20px;">
+            <i class="fas ${iconClass}" style="font-size: 32px; color: var(--primary-color); margin-bottom: 12px;"></i>
+            <h3 style="margin: 0 0 8px 0; color: var(--primary-color);">Map ${iconName} Icon</h3>
+            <p style="margin: 0; color: var(--light-text); font-size: 14px;">Select a job title to assign this icon to:</p>
+        </div>
+        <div id="jobTitleList" style="max-height: 300px; overflow-y: auto;"></div>
+        <div style="text-align: center; margin-top: 20px;">
+            <button id="cancelMapping" style="margin-right: 12px; padding: 8px 16px; border: 1px solid var(--border-color); background: white; border-radius: 6px; cursor: pointer;">Cancel</button>
+        </div>
+    `;
+    
+    const jobTitleList = modalContent.querySelector('#jobTitleList');
+    jobTitles.forEach((title, index) => {
+        const button = document.createElement('button');
+        button.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        `;
+        button.textContent = title;
+        
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = 'var(--light-bg)';
+            button.style.borderColor = 'var(--primary-color)';
+        });
+        
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = 'white';
+            button.style.borderColor = 'var(--border-color)';
+        });
+        
+        button.onclick = () => {
             // Save the mapping
             const customIconMappings = JSON.parse(localStorage.getItem('jobFunctionIcons') || '{}');
-            customIconMappings[selectedJobTitle] = iconClass;
+            customIconMappings[title] = iconClass;
             localStorage.setItem('jobFunctionIcons', JSON.stringify(customIconMappings));
             
-            showNotification(`Icon mapped to ${selectedJobTitle}`, 'success');
+            showNotification(`${iconName} icon mapped to ${title}`, 'success');
             loadEmployees(); // Refresh to apply new icons
-        } else {
-            showNotification('Invalid selection', 'error');
+            document.body.removeChild(modal);
+        };
+        
+        jobTitleList.appendChild(button);
+    });
+    
+    modalContent.querySelector('#cancelMapping').onclick = () => {
+        document.body.removeChild(modal);
+    };
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Close on outside click
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
         }
-    }
+    };
 }
 
 // Initialize the application
@@ -511,6 +663,19 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             toggleLanguage();
         }
+    });
+    
+    // Add window resize listener to update calendar grid
+    window.addEventListener('resize', function() {
+        // Debounce the resize event
+        clearTimeout(window.resizeTimeout);
+        window.resizeTimeout = setTimeout(function() {
+            // Re-generate calendar grid with new height calculations
+            if (document.getElementById('calendarBody') && document.querySelector('.content-section.active[id="planning"]')) {
+                generateCalendarGrid();
+                loadWeekPlanning(); // Reload shifts with new dimensions
+            }
+        }, 250);
     });
 });
 
@@ -683,15 +848,20 @@ async function loadPC302Data() {
 async function loadFontAwesomeJobs() {
     try {
         const response = await fetch('fontawesomejobs.json');
-        fontAwesomeJobs = await response.json();
+        const additionalJobs = await response.json();
+        // Merge with existing fallback data
+        fontAwesomeJobs = { ...fontAwesomeJobs, ...additionalJobs };
         console.log('FontAwesome jobs data loaded successfully');
+        
+        // Re-initialize icon mapping if profile icons are enabled
+        if (useProfileIcon) {
+            setTimeout(() => {
+                initializeJobIconMapping();
+            }, 100);
+        }
     } catch (error) {
         console.error('Failed to load FontAwesome jobs data:', error);
-        fontAwesomeJobs = {
-            "general": [
-                { "name": "User", "icon": "fa-user" }
-            ]
-        };
+        console.log('Using fallback FontAwesome jobs data');
     }
 }
 
@@ -984,10 +1154,17 @@ function getJobFunctionIcon(jobTitle) {
     const titleLower = jobTitle.toLowerCase();
     
     // Check for specific job titles in our FontAwesome jobs data
-    for (const category in fontAwesomeJobs) {
-        for (const job of fontAwesomeJobs[category]) {
-            if (job.name.toLowerCase().includes(titleLower) || titleLower.includes(job.name.toLowerCase())) {
-                return job.icon;
+    if (fontAwesomeJobs && Object.keys(fontAwesomeJobs).length > 0) {
+        for (const category in fontAwesomeJobs) {
+            if (fontAwesomeJobs[category] && Array.isArray(fontAwesomeJobs[category])) {
+                for (const job of fontAwesomeJobs[category]) {
+                    if (job && job.name && job.icon) {
+                        const jobNameLower = job.name.toLowerCase();
+                        if (jobNameLower.includes(titleLower) || titleLower.includes(jobNameLower)) {
+                            return job.icon;
+                        }
+                    }
+                }
             }
         }
     }
@@ -1177,6 +1354,10 @@ function generateCalendarGrid() {
     const calendarBody = document.getElementById('calendarBody');
     calendarBody.innerHTML = '';
     
+    // Calculate dynamic row height to fit all 24 hours on screen
+    const availableHeight = window.innerHeight - 320; // Account for header, nav, and spacing
+    const ROW_HEIGHT = Math.floor(availableHeight / 24);
+    
     // Generate 24 hours x 7 days grid
     for (let hour = 0; hour < 24; hour++) {
         // Time column
@@ -1184,10 +1365,16 @@ function generateCalendarGrid() {
         timeCell.className = 'time-cell';
         timeCell.textContent = `${hour.toString().padStart(2, '0')}:00`;
         timeCell.style.cssText = `
-            padding: 10px;
+            height: ${ROW_HEIGHT}px;
+            min-height: ${ROW_HEIGHT}px;
+            padding: 2px 4px;
             border: 1px solid #ddd;
             background-color: #f9f9f9;
             font-weight: bold;
+            font-size: ${Math.max(8, Math.floor(ROW_HEIGHT / 3))}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         `;
         calendarBody.appendChild(timeCell);
         
@@ -1198,9 +1385,11 @@ function generateCalendarGrid() {
             cell.dataset.day = day;
             cell.dataset.hour = hour;
             cell.style.cssText = `
-                min-height: 40px;
+                height: ${ROW_HEIGHT}px;
+                min-height: ${ROW_HEIGHT}px;
                 border: 1px solid #ddd;
                 position: relative;
+                background-color: #fff;
             `;
             
             // Add drop event listeners
@@ -1210,6 +1399,9 @@ function generateCalendarGrid() {
             calendarBody.appendChild(cell);
         }
     }
+    
+    // Store the calculated row height for use in other functions
+    window.currentRowHeight = ROW_HEIGHT;
 }
 
 function loadEmployeePool() {
@@ -1230,6 +1422,7 @@ function createEmployeePoolCard(employee) {
     card.dataset.employeeId = employee.id;
     
     const contractTypeClass = `contract-${employee.contractType}`;
+    const localizedJobTitle = getLocalizedJobTitle(employee.jobTitle);
     
     card.style.cssText = `
         padding: 10px;
@@ -1252,7 +1445,7 @@ function createEmployeePoolCard(employee) {
     
     card.innerHTML = `
         <strong>${employee.firstName} ${employee.lastName}</strong><br>
-        <small>${employee.jobTitle}</small>
+        <small>${localizedJobTitle}</small>
     `;
     
     card.addEventListener('dragstart', handleDragStart);
@@ -2204,7 +2397,7 @@ function startResize(e, direction, shiftBar, updateTimeDisplay) {
     const startY = e.clientY;
     const originalStartHour = parseInt(shiftBar.dataset.startHour);
     const originalEndHour = parseInt(shiftBar.dataset.endHour);
-    const cellHeight = 50; // Height of each hour cell
+    const cellHeight = window.currentRowHeight || 30; // Use dynamic row height
     
     function onMouseMove(e) {
         const deltaY = e.clientY - startY;
@@ -2270,10 +2463,10 @@ function updateShiftBarDisplay(shiftBar) {
     const startHour = parseInt(shiftBar.dataset.startHour);
     const endHour = parseInt(shiftBar.dataset.endHour);
     const duration = endHour - startHour;
-    const cellHeight = 50;
+    const cellHeight = window.currentRowHeight || 30; // Use dynamic row height
     
     // Update height based on duration
-    shiftBar.style.height = `${duration * cellHeight}px`;
+    shiftBar.style.height = `${duration * cellHeight - 2}px`; // Subtract 2px for border
     
     // Update z-index to ensure it appears above cells
     shiftBar.style.zIndex = '15';
