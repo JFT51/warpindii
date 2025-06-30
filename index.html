@@ -28,7 +28,11 @@
 
         <!-- Navigation -->
         <nav class="main-nav">
-            <button class="nav-btn active" onclick="showSection('employees')" data-section="employees">
+            <button class="nav-btn active" onclick="showSection('dashboard')" data-section="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span data-key="dashboard">Dashboard</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('employees')" data-section="employees">
                 <i class="fas fa-users"></i>
                 <span data-key="employees">Werknemers</span>
             </button>
@@ -60,8 +64,22 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Dashboard Overview -->
-            <section id="dashboard" class="content-section">
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="content-section active">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-tachometer-alt"></i> <span data-key="dashboardTitle">Dashboard</span></h2>
+                        <p class="section-subtitle" data-key="dashboardSubtitle">Overzicht van uw restaurant</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn-secondary" onclick="refreshDashboard()">
+                            <i class="fas fa-sync-alt"></i>
+                            <span data-key="refresh">Vernieuwen</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Stats -->
                 <div class="dashboard-stats">
                     <div class="stat-card">
                         <div class="stat-icon">
@@ -72,78 +90,156 @@
                             <p data-key="totalEmployees">Totaal Werknemers</p>
                         </div>
                     </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="activeEmployees">0</h3>
+                            <p data-key="activeEmployees">Actieve Werknemers</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-week"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="weeklyShifts">0</h3>
+                            <p data-key="weeklyShifts">Shifts Deze Week</p>
+                        </div>
+                    </div>
+                    
                     <div class="stat-card">
                         <div class="stat-icon">
                             <i class="fas fa-file-contract"></i>
                         </div>
                         <div class="stat-content">
-                            <h3 id="activeContracts">0</h3>
-                            <p data-key="activeContracts">Actieve Contracten</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-times"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="pendingAbsences">0</h3>
-                            <p data-key="pendingAbsences">Afwezigheden in Behandeling</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="todayClockIns">0</h3>
-                            <p data-key="todayClockIns">Vandaag Ingeklokt</p>
+                            <h3 id="totalContracts">0</h3>
+                            <p data-key="totalContracts">Totaal Contracten</p>
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- Dashboard Grid -->
                 <div class="dashboard-grid">
-                    <div class="dashboard-card">
+                    <!-- Weather Card -->
+                    <div class="dashboard-card weather-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-calendar-week"></i> <span data-key="weekOverview">Week Overzicht</span></h3>
+                            <h3><i class="fas fa-cloud-sun"></i> <span data-key="weatherTitle">Weer in Antwerpen</span></h3>
+                            <div class="card-actions">
+                                <button class="btn-icon" onclick="refreshWeather()" title="Weer vernieuwen">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-content">
-                            <div id="weekSummary" class="week-summary"></div>
+                            <div id="weatherLoading" class="weather-loading">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <span data-key="loadingWeather">Weer laden...</span>
+                            </div>
+                            <div id="weatherData" class="weather-data" style="display: none;">
+                                <!-- Current Weather -->
+                                <div class="current-weather">
+                                    <div class="weather-main">
+                                        <div class="weather-icon">
+                                            <i id="weatherIcon" class="fas fa-sun"></i>
+                                        </div>
+                                        <div class="weather-temp">
+                                            <span id="currentTemp">--</span>°C
+                                        </div>
+                                    </div>
+                                    <div class="weather-details">
+                                        <div class="weather-detail">
+                                            <i class="fas fa-eye"></i>
+                                            <span><span id="visibility">--</span> km</span>
+                                        </div>
+                                        <div class="weather-detail">
+                                            <i class="fas fa-wind"></i>
+                                            <span><span id="windSpeed">--</span> km/h</span>
+                                        </div>
+                                        <div class="weather-detail">
+                                            <i class="fas fa-tint"></i>
+                                            <span><span id="humidity">--</span>%</span>
+                                        </div>
+                                        <div class="weather-detail">
+                                            <i class="fas fa-thermometer-half"></i>
+                                            <span data-key="feelsLike">Voelt als</span> <span id="feelsLike">--</span>°C
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 5-Day Forecast -->
+                                <div class="weather-forecast">
+                                    <h4 data-key="fiveDayForecast">5-Daagse Voorspelling</h4>
+                                    <div id="forecastDays" class="forecast-days">
+                                        <!-- Forecast days will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="weatherError" class="weather-error" style="display: none;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span data-key="weatherError">Kon het weer niet laden</span>
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Quick Actions Card -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-exclamation-triangle"></i> <span data-key="alerts">Meldingen</span></h3>
+                            <h3><i class="fas fa-bolt"></i> <span data-key="quickActions">Snelle Acties</span></h3>
                         </div>
                         <div class="card-content">
-                            <div id="alertsList" class="alerts-list"></div>
+                            <div class="quick-actions">
+                                <button class="quick-action-btn" onclick="openEmployeeModal()">
+                                    <i class="fas fa-user-plus"></i>
+                                    <span data-key="addEmployee">Werknemer Toevoegen</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="showSection('planning')">
+                                    <i class="fas fa-calendar-plus"></i>
+                                    <span data-key="createPlanning">Planning Maken</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openContractModal()">
+                                    <i class="fas fa-file-plus"></i>
+                                    <span data-key="createContract">Contract Aanmaken</span>
+                                </button>
+                                <button class="quick-action-btn" onclick="openAbsenceModal()">
+                                    <i class="fas fa-calendar-times"></i>
+                                    <span data-key="addAbsence">Afwezigheid Toevoegen</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    
+
+                    <!-- Recent Activity Card -->
                     <div class="dashboard-card">
                         <div class="card-header">
-                            <h3><i class="fas fa-chart-line"></i> <span data-key="quickStats">Snelle Statistieken</span></h3>
+                            <h3><i class="fas fa-history"></i> <span data-key="recentActivity">Recente Activiteit</span></h3>
                         </div>
                         <div class="card-content">
-                            <div class="quick-stats">
-                                <div class="quick-stat">
-                                    <i class="fas fa-user-check"></i>
-                                    <span data-key="activeToday">Actief Vandaag</span>
-                                    <strong id="activeTodayCount">0</strong>
-                                </div>
-                                <div class="quick-stat">
-                                    <i class="fas fa-user-times"></i>
-                                    <span data-key="absentToday">Afwezig Vandaag</span>
-                                    <strong id="absentTodayCount">0</strong>
-                                </div>
+                            <div id="recentActivityList" class="recent-activity-list">
+                                <!-- Recent activities will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming Events Card -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-calendar-alt"></i> <span data-key="upcomingEvents">Aankomende Evenementen</span></h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="upcomingEventsList" class="upcoming-events-list">
+                                <!-- Upcoming events will be populated here -->
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
-            
+
             <!-- Employees Section -->
-            <section id="employees" class="content-section active">
+            <section id="employees" class="content-section">
                 <div class="section-header">
                     <div class="section-title">
                         <h2><i class="fas fa-users"></i> <span data-key="employeesTitle">Werknemers Beheer</span></h2>

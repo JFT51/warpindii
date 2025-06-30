@@ -348,6 +348,11 @@ let timeclockLogs = JSON.parse(localStorage.getItem('timeclockLogs')) || [];
 let weeklyPlanning = JSON.parse(localStorage.getItem('weeklyPlanning')) || {};
 let signaturePad;
 
+// Shift copying functionality
+let isPlusKeyPressed = false;
+let copiedShift = null;
+let shiftCopyMode = false;
+
 // Navigation functions - Define early to ensure availability
 function showSection(sectionId) {
     console.log('showSection called with:', sectionId);
@@ -677,6 +682,37 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 250);
     });
+    
+    // Add keyboard event listeners for shift copying
+    document.addEventListener('keydown', function(e) {
+        if (e.key === '+' || e.key === '=' && e.shiftKey) {
+            isPlusKeyPressed = true;
+            document.body.style.cursor = 'copy';
+            
+            // Show visual feedback for copy mode
+            document.querySelectorAll('.shift-bar').forEach(bar => {
+                bar.style.boxShadow = '0 0 0 2px #007bff';
+            });
+        }
+    });
+    
+    document.addEventListener('keyup', function(e) {
+        if (e.key === '+' || (e.key === '=' && !e.shiftKey)) {
+            isPlusKeyPressed = false;
+            shiftCopyMode = false;
+            document.body.style.cursor = 'default';
+            
+            // Remove visual feedback
+            document.querySelectorAll('.shift-bar').forEach(bar => {
+                bar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            });
+            
+            // If we have a copied shift but user released key, show notification
+            if (copiedShift) {
+                showNotification('Copy mode deactivated. Click on a day to paste the shift.', 'info');
+            }
+        }
+    });
 });
 
 // Add keyboard shortcut info to language toggle button
@@ -819,12 +855,13 @@ async function initializeApp() {
             signaturePad = new SignaturePad(canvas);
         }
         
-        // Ensure the employees section is properly initialized and visible
-        showSection('employees');
+        // Ensure the dashboard section is properly initialized and visible as homepage
+        showSection('dashboard');
         
-        // Force reload employees to ensure they're displayed
+        // Initialize dashboard data
         setTimeout(() => {
-            loadEmployees();
+            refreshDashboard();
+            loadWeather();
         }, 100);
     } catch (error) {
         console.error('Initialization error:', error);
@@ -1054,7 +1091,17 @@ function createEmployeeCard(employee) {
             <div class="employee-main-info">
                 <div class="employee-avatar">
                     ${useProfileIcon ? 
-                        `<i class="fas ${jobIcon}" style="color: ${avatarColor}; font-size: 24px;"></i>` : 
+                        `<span style="
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            width: 48px;
+                            height: 48px;
+                            border-radius: 50%;
+                            background-color: ${avatarColor};
+                            color: white;
+                            font-size: 24px;
+                        "><i class="fas ${jobIcon}"></i></span>` : 
                         `<span style="
                             display: flex;
                             align-items: center;
@@ -1354,28 +1401,20 @@ function generateCalendarGrid() {
     const calendarBody = document.getElementById('calendarBody');
     calendarBody.innerHTML = '';
     
-    // Calculate dynamic row height to fit all 24 hours on screen
-    const availableHeight = window.innerHeight - 320; // Account for header, nav, and spacing
-    const ROW_HEIGHT = Math.floor(availableHeight / 24);
-    
-    // Generate 24 hours x 7 days grid
-    for (let hour = 0; hour < 24; hour++) {
-        // Time column
+    // Generate 48 time slots (30-minute intervals) x 7 days grid
+    for (let timeSlot = 0; timeSlot < 48; timeSlot++) {
+        const hour = Math.floor(timeSlot / 2);
+        const minute = (timeSlot % 2) * 30;
+        
+        // Time column - only show hourly markers (when minute = 0)
         const timeCell = document.createElement('div');
         timeCell.className = 'time-cell';
-        timeCell.textContent = `${hour.toString().padStart(2, '0')}:00`;
-        timeCell.style.cssText = `
-            height: ${ROW_HEIGHT}px;
-            min-height: ${ROW_HEIGHT}px;
-            padding: 2px 4px;
-            border: 1px solid #ddd;
-            background-color: #f9f9f9;
-            font-weight: bold;
-            font-size: ${Math.max(8, Math.floor(ROW_HEIGHT / 3))}px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
+        if (minute === 0) {
+            timeCell.textContent = `${hour.toString().padStart(2, '0')}:00`;
+        } else {
+            timeCell.textContent = ''; // Empty for 30-minute intervals
+            timeCell.style.borderTop = 'none';
+        }
         calendarBody.appendChild(timeCell);
         
         // Day columns
@@ -1383,25 +1422,33 @@ function generateCalendarGrid() {
             const cell = document.createElement('div');
             cell.className = 'calendar-cell';
             cell.dataset.day = day;
+            cell.dataset.timeSlot = timeSlot;
             cell.dataset.hour = hour;
-            cell.style.cssText = `
-                height: ${ROW_HEIGHT}px;
-                min-height: ${ROW_HEIGHT}px;
-                border: 1px solid #ddd;
-                position: relative;
-                background-color: #fff;
-            `;
+            cell.dataset.minute = minute;
+            
+            // Visual distinction for 30-minute intervals
+            if (minute === 30) {
+                cell.style.borderTop = '1px dashed #e0e0e0';
+            }
             
             // Add drop event listeners
             cell.addEventListener('dragover', handleDragOver);
             cell.addEventListener('drop', handleDrop);
             
+            // Add click handler for shift pasting
+            cell.addEventListener('click', handleCellClick);
+            
             calendarBody.appendChild(cell);
         }
     }
     
-    // Store the calculated row height for use in other functions
-    window.currentRowHeight = ROW_HEIGHT;
+    // Calculate and store row height after the grid is rendered
+    setTimeout(() => {
+        const firstCell = document.querySelector('.calendar-cell');
+        if (firstCell) {
+            window.currentRowHeight = firstCell.offsetHeight;
+        }
+    }, 100);
 }
 
 function loadEmployeePool() {
@@ -1669,6 +1716,9 @@ function createShiftBar(employeeId, day, hour, cell) {
     shiftBar.draggable = true;
     shiftBar.addEventListener('dragstart', handleShiftDragStart);
     
+    // Add click handler for shift copying
+    shiftBar.addEventListener('click', handleShiftClick);
+    
     // Prevent dragging when interacting with resize handles
     topHandle.addEventListener('mousedown', (e) => {
         e.stopPropagation();
@@ -1760,17 +1810,30 @@ function loadWeekPlanning() {
     const shifts = weeklyPlanning[weekKey] || [];
     
     shifts.forEach(shift => {
+        // Find cell using only hour (not minute) since we're working with hourly slots for now
         const cell = document.querySelector(
-            `.calendar-cell[data-day="${shift.day}"][data-hour="${shift.startHour}"]`
+            `.calendar-cell[data-day="${shift.day}"][data-hour="${shift.startHour}"][data-minute="0"]`
         );
         if (cell) {
             // Recreate shift with saved data
             const shiftBar = createShiftBar(shift.employeeId, shift.day, shift.startHour, cell);
             if (shiftBar && shift.endHour) {
                 shiftBar.dataset.endHour = shift.endHour;
+                updateShiftBarDisplay(shiftBar);
+                
+                // Update time display
+                const timeDisplay = shiftBar.querySelector('.shift-time-display');
+                if (timeDisplay) {
+                    timeDisplay.textContent = `${shift.startHour.toString().padStart(2, '0')}:00 - ${shift.endHour.toString().padStart(2, '0')}:00`;
+                }
             }
         }
     });
+    
+    // Update overlapping shifts layout after all shifts are loaded
+    setTimeout(() => {
+        updateOverlappingShiftsLayout();
+    }, 100);
 }
 
 // Table planning functions
@@ -1795,6 +1858,58 @@ function loadTablePlanning() {
                 border: 1px solid #ddd;
                 padding: 5px;
             `;
+            
+            // Attach input event to update week planner
+            dayCell.addEventListener('input', (e) => {
+                // Clear existing shifts for this employee on this day first
+                document.querySelectorAll(`.shift-bar[data-employee-id="${employee.id}"][data-day="${day}"]`).forEach(shift => {
+                    shift.remove();
+                });
+                
+                const inputText = e.target.textContent.trim();
+                if (!inputText) return;
+                
+                // Parse time ranges from input (supports formats like "8-12", "8:00-12:00", "8-12, 14-18")
+                const timeRanges = inputText.split(/[;,]/).map(time => time.trim()).map(timespan => {
+                    // Handle different formats: "8-12", "8:00-12:00", "08:00-12:00"
+                    const match = timespan.match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/);
+                    if (match) {
+                        const startHour = parseInt(match[1], 10);
+                        const endHour = parseInt(match[3], 10);
+                        return { startHour, endHour };
+                    }
+                    return null;
+                }).filter(t => t && !isNaN(t.startHour) && !isNaN(t.endHour) && t.startHour < t.endHour && t.startHour >= 0 && t.endHour <= 24);
+                
+                // Create shift bars for each time range
+                timeRanges.forEach(({ startHour, endHour }) => {
+                    const startCell = document.querySelector(`.calendar-cell[data-day="${day}"][data-hour="${startHour}"]`);
+                    if (startCell) {
+                        const shiftBar = createShiftBar(employee.id, day, startHour, startCell);
+                        if (shiftBar) {
+                            shiftBar.dataset.endHour = endHour;
+                            updateShiftBarDisplay(shiftBar);
+                            
+                            // Update time display
+                            const timeDisplay = shiftBar.querySelector('.shift-time-display');
+                            if (timeDisplay) {
+                                timeDisplay.textContent = `${startHour.toString().padStart(2, '0')}:00 - ${endHour.toString().padStart(2, '0')}:00`;
+                            }
+                        }
+                    }
+                });
+                
+                // Update overlapping layout
+                updateOverlappingShiftsLayout();
+                
+                // Save weekly planning
+                saveWeeklyPlanning();
+                
+                // Show feedback
+                if (timeRanges.length > 0) {
+                    showNotification(`Updated shifts for ${employee.firstName} ${employee.lastName}`, 'success');
+                }
+            });
             
             // Find shifts for this employee and day
             const weekKey = getWeekKey(currentWeek);
@@ -2397,7 +2512,9 @@ function startResize(e, direction, shiftBar, updateTimeDisplay) {
     const startY = e.clientY;
     const originalStartHour = parseInt(shiftBar.dataset.startHour);
     const originalEndHour = parseInt(shiftBar.dataset.endHour);
-    const cellHeight = window.currentRowHeight || 30; // Use dynamic row height
+    // Get the actual cell height from the DOM
+    const firstCell = document.querySelector('.calendar-cell');
+    const cellHeight = firstCell ? firstCell.offsetHeight : 30;
     
     function onMouseMove(e) {
         const deltaY = e.clientY - startY;
@@ -2463,7 +2580,10 @@ function updateShiftBarDisplay(shiftBar) {
     const startHour = parseInt(shiftBar.dataset.startHour);
     const endHour = parseInt(shiftBar.dataset.endHour);
     const duration = endHour - startHour;
-    const cellHeight = window.currentRowHeight || 30; // Use dynamic row height
+    
+    // Get the actual cell height from the DOM
+    const firstCell = document.querySelector('.calendar-cell');
+    const cellHeight = firstCell ? firstCell.offsetHeight : 30;
     
     // Update height based on duration
     shiftBar.style.height = `${duration * cellHeight - 2}px`; // Subtract 2px for border
@@ -2669,4 +2789,730 @@ function handleShiftDrop(e) {
     document.querySelectorAll('.shift-bar.dragging').forEach(bar => {
         bar.classList.remove('dragging');
     });
+}
+
+// Shift copying functionality
+function handleShiftClick(e) {
+    if (isPlusKeyPressed) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const shiftBar = e.target.closest('.shift-bar');
+        if (!shiftBar) return;
+        
+        // Copy shift data
+        copiedShift = {
+            employeeId: shiftBar.dataset.employeeId,
+            startHour: parseInt(shiftBar.dataset.startHour),
+            endHour: parseInt(shiftBar.dataset.endHour),
+            duration: parseInt(shiftBar.dataset.endHour) - parseInt(shiftBar.dataset.startHour)
+        };
+        
+        shiftCopyMode = true;
+        
+        // Visual feedback
+        shiftBar.style.boxShadow = '0 0 0 3px #28a745';
+        setTimeout(() => {
+            if (shiftBar.parentNode) {
+                shiftBar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+            }
+        }, 500);
+        
+        const employee = employees.find(emp => emp.id === copiedShift.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        
+        showNotification(`Shift copied for ${employeeName} (${copiedShift.startHour}:00-${copiedShift.endHour}:00). Click on another day to paste.`, 'success');
+    }
+}
+
+function handleCellClick(e) {
+    if (!isPlusKeyPressed && !shiftCopyMode) {
+        const cell = e.target.closest('.calendar-cell');
+        if (!cell) return;
+        
+        // Create a modal for employee selection instead of prompt
+        showEmployeeSelectionModal(cell);
+        return;
+    }
+    if (copiedShift && (isPlusKeyPressed || shiftCopyMode)) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const cell = e.target.closest('.calendar-cell');
+        if (!cell) return;
+        
+        const day = parseInt(cell.dataset.day);
+        const hour = parseInt(cell.dataset.hour);
+        
+        // Check if the copied shift would fit (not exceed 24:00)
+        if (hour + copiedShift.duration > 24) {
+            showNotification('Cannot paste shift here - it would exceed 24:00', 'warning');
+            return;
+        }
+        
+        // Remove any existing shift for this employee on this day
+        const existingShiftForEmployee = document.querySelector(
+            `.shift-bar[data-employee-id="${copiedShift.employeeId}"][data-day="${day}"]`
+        );
+        
+        if (existingShiftForEmployee) {
+            existingShiftForEmployee.remove();
+        }
+        
+        // Create the new shift at the clicked location
+        const targetCell = document.querySelector(
+            `.calendar-cell[data-day="${day}"][data-hour="${hour}"]`
+        );
+        
+        if (targetCell) {
+            const newShiftBar = createShiftBar(copiedShift.employeeId, day, hour, targetCell);
+            if (newShiftBar) {
+                // Set the copied duration
+                newShiftBar.dataset.endHour = hour + copiedShift.duration;
+                updateShiftBarDisplay(newShiftBar);
+                
+                // Update time display
+                const timeDisplay = newShiftBar.querySelector('.shift-time-display');
+                if (timeDisplay) {
+                    timeDisplay.textContent = `${hour.toString().padStart(2, '0')}:00 - ${(hour + copiedShift.duration).toString().padStart(2, '0')}:00`;
+                }
+                
+                // Update overlapping shifts layout
+                updateOverlappingShiftsLayout();
+                
+                const employee = employees.find(emp => emp.id === copiedShift.employeeId);
+                const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+                
+                showNotification(`Shift pasted for ${employeeName} on ${getDayName(day)}`, 'success');
+                
+                // Don't clear the copied shift so user can paste multiple times
+                // copiedShift = null;
+                // shiftCopyMode = false;
+            }
+        }
+    }
+}
+
+function getDayName(dayIndex) {
+    const days = {
+        nl: ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'],
+        fr: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+    };
+    return days[currentLanguage][dayIndex] || `Day ${dayIndex + 1}`;
+}
+
+function showEmployeeSelectionModal(cell) {
+    const day = parseInt(cell.dataset.day);
+    const startHour = parseInt(cell.dataset.hour);
+    const startMinute = parseInt(cell.dataset.minute);
+    
+    const employeeSelectionPanel = createEmployeeSelectionPanel(day, startHour, startMinute);
+
+    document.body.appendChild(employeeSelectionPanel);
+
+    employeeSelectionPanel.onclick = (e) => {
+        if (e.target === employeeSelectionPanel) {
+            document.body.removeChild(employeeSelectionPanel);
+        }
+    };
+}
+
+
+function createEmployeeSelectionPanel(day, startHour, startMinute) {
+    const activeEmployees = employees.filter(emp => emp.active);
+    if (activeEmployees.length === 0) {
+        showNotification('No active employees available', 'warning');
+        return;
+    }
+
+    const panel = document.createElement('div');
+    panel.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+
+    const panelContent = document.createElement('div');
+    panelContent.style.cssText = `
+        background: white;
+        padding: 24px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 500px;
+        overflow-y: auto;
+    `;
+
+    panelContent.innerHTML = `
+         3cdiv style="text-align: center; margin-bottom: 20px;" 3e
+             3ch3 style="margin: 0 0 8px 0; color: var(--primary-color);" 3eAdd Employee Shift 3c/h3 3e
+             3cdiv style="margin-bottom: 12px;" 3e
+                Start:  3cinput type="time" id="startTimeInput" value="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" / 3e
+                End:  3cinput type="time" id="endTimeInput" min="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" / 3e
+             3c/div 3e
+             3cdiv id="employeeList" style="max-height: 300px; overflow-y: auto;" 3e 3c/div 3e
+             3cdiv style="text-align: center; margin-top: 20px;" 3e
+                 3cbutton id="cancelSelection" style="padding: 8px 16px; border: 1px solid var(--border-color); background: white; border-radius: 6px; cursor: pointer;" 3eCancel 3c/button 3e
+             3c/div 3e
+         3c/div 3e
+    `;
+
+    const employeeList = panelContent.querySelector('#employeeList');
+
+    activeEmployees.forEach(employee => {
+        const button = document.createElement('button');
+        button.style.cssText = `
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        `;
+
+        const contractTypeColors = {
+            'full-time': '#4CAF50',
+            'part-time': '#2196F3', 
+            'flexi-job': '#FFEB3B',
+            'student': '#FF5722',
+            'extra': '#9E9E9E'
+        };
+
+        const avatarColor = contractTypeColors[employee.contractType] || '#6b9d6b';
+        const jobIcon = getJobFunctionIcon(employee.jobTitle);
+
+        button.innerHTML = `
+            <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background-color: ${avatarColor};
+                color: white;
+                font-size: 16px;
+                flex-shrink: 0;
+            ">
+                ${useProfileIcon ? 
+                    `<i class="fas ${jobIcon}"></i>` : 
+                    `${employee.firstName.charAt(0)}${employee.lastName.charAt(0)}`
+                }
+            </div>
+            <div>
+                <div style="font-weight: 600;">${employee.firstName} ${employee.lastName}</div>
+                <div style="font-size: 12px; color: var(--light-text);">${getLocalizedJobTitle(employee.jobTitle)}</div>
+            </div>
+        `;
+
+        button.addEventListener('mouseover', () => {
+            button.style.backgroundColor = 'var(--light-bg)';
+            button.style.borderColor = 'var(--primary-color)';
+        });
+
+        button.addEventListener('mouseout', () => {
+            button.style.backgroundColor = 'white';
+            button.style.borderColor = 'var(--border-color)';
+        });
+
+        button.onclick = () => {
+            const startInput = panelContent.querySelector('#startTimeInput').value;
+            const endInput = panelContent.querySelector('#endTimeInput').value;
+
+            if (startInput && endInput && startInput < endInput) {
+                const [startHour, startMinute] = startInput.split(':').map(num => parseInt(num));
+                const [endHour, endMinute] = endInput.split(':').map(num => parseInt(num));
+
+                const startTimeSlot = startHour * 2 + (startMinute >= 30 ? 1 : 0);
+                const endTimeSlot = endHour * 2 + (endMinute >= 30 ? 1 : 0);
+
+                // Find the correct cell for the start time slot
+                // For 30-minute intervals, we need to find the cell that matches the time
+                // Round minutes to nearest 30-minute interval (0 or 30)
+                const roundedMinute = startMinute >= 30 ? 30 : 0;
+                const startCell = document.querySelector(`.calendar-cell[data-hour="${startHour}"][data-minute="${roundedMinute}"][data-day="${day}"]`);
+                console.log('Looking for cell:', `data-hour="${startHour}" data-minute="${startMinute}" data-day="${day}"`);
+                console.log('Found cell:', startCell);
+                if (startCell) {
+                    const shiftBar = createShiftBar(employee.id, day, startHour, startCell);
+                    if (shiftBar) {
+                        // Update the shift bar with the correct end time
+                        shiftBar.dataset.endHour = endHour;
+                        shiftBar.dataset.startHour = startHour;
+                        
+                        // Update time display
+                        const timeDisplay = shiftBar.querySelector('.shift-time-display');
+                        if (timeDisplay) {
+                            timeDisplay.textContent = `${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')} - ${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+                        }
+                        
+                        // Update shift bar display to reflect the correct duration
+                        updateShiftBarDisplay(shiftBar);
+                    }
+                }
+                loadTablePlanning();
+                showNotification(`Shift added for ${employee.firstName} ${employee.lastName}`, 'success');
+                document.body.removeChild(panel);
+            } else {
+                showNotification('End time must be after start time', 'warning');
+            }
+        };
+
+        employeeList.appendChild(button);
+    });
+
+    panelContent.querySelector('#cancelSelection').onclick = () => {
+        document.body.removeChild(panel);
+    };
+
+    panel.appendChild(panelContent);
+    return panel;
+}
+
+// Dashboard Functions
+function refreshDashboard() {
+    console.log('Refreshing dashboard...');
+    updateDashboardStats();
+    updateRecentActivity();
+    updateUpcomingEvents();
+    loadWeather();
+    showNotification('Dashboard refreshed', 'success');
+}
+
+function updateDashboardStats() {
+    // Update total employees
+    const totalEmployeesEl = document.getElementById('totalEmployees');
+    if (totalEmployeesEl) {
+        totalEmployeesEl.textContent = employees.length;
+    }
+    
+    // Update active employees
+    const activeEmployeesEl = document.getElementById('activeEmployees');
+    if (activeEmployeesEl) {
+        const activeCount = employees.filter(emp => emp.active).length;
+        activeEmployeesEl.textContent = activeCount;
+    }
+    
+    // Update weekly shifts
+    const weeklyShiftsEl = document.getElementById('weeklyShifts');
+    if (weeklyShiftsEl) {
+        const weekKey = getWeekKey(currentWeek);
+        const shifts = weeklyPlanning[weekKey] || [];
+        weeklyShiftsEl.textContent = shifts.length;
+    }
+    
+    // Update total contracts
+    const totalContractsEl = document.getElementById('totalContracts');
+    if (totalContractsEl) {
+        totalContractsEl.textContent = contracts.length;
+    }
+    
+    // Update contracts stats if elements exist
+    const signedContractsEl = document.getElementById('signedContractsCount');
+    const pendingContractsEl = document.getElementById('pendingContractsCount');
+    const expiringContractsEl = document.getElementById('expiringContractsCount');
+    
+    if (signedContractsEl) {
+        const signedCount = contracts.filter(contract => contract.signature).length;
+        signedContractsEl.textContent = signedCount;
+    }
+    
+    if (pendingContractsEl) {
+        const pendingCount = contracts.filter(contract => !contract.signature).length;
+        pendingContractsEl.textContent = pendingCount;
+    }
+    
+    if (expiringContractsEl) {
+        // Count contracts expiring in the next 30 days
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        
+        const expiringCount = contracts.filter(contract => {
+            if (!contract.endDate) return false;
+            const endDate = new Date(contract.endDate);
+            return endDate <= thirtyDaysFromNow && endDate >= new Date();
+        }).length;
+        
+        expiringContractsEl.textContent = expiringCount;
+    }
+}
+
+function updateRecentActivity() {
+    const activityList = document.getElementById('recentActivityList');
+    if (!activityList) return;
+    
+    activityList.innerHTML = '';
+    
+    // Collect recent activities from various sources
+    const activities = [];
+    
+    // Recent employee additions (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    employees.forEach(employee => {
+        // For demo purposes, we'll create some mock recent activity
+        activities.push({
+            type: 'employee',
+            message: `${employee.firstName} ${employee.lastName} added to system`,
+            timestamp: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+            icon: 'fa-user-plus',
+            color: '#28a745'
+        });
+    });
+    
+    // Recent contract signings
+    contracts.filter(contract => contract.signature).forEach(contract => {
+        const employee = employees.find(emp => emp.id === contract.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        
+        activities.push({
+            type: 'contract',
+            message: `Contract signed by ${employeeName}`,
+            timestamp: new Date(contract.createdAt),
+            icon: 'fa-file-signature',
+            color: '#007bff'
+        });
+    });
+    
+    // Recent absences
+    absences.slice(-5).forEach(absence => {
+        const employee = employees.find(emp => emp.id === absence.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        
+        activities.push({
+            type: 'absence',
+            message: `${absence.approved ? 'Approved' : 'Pending'} absence for ${employeeName}`,
+            timestamp: new Date(absence.createdAt),
+            icon: 'fa-calendar-times',
+            color: absence.approved ? '#28a745' : '#ffc107'
+        });
+    });
+    
+    // Sort by timestamp and take the most recent 10
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const recentActivities = activities.slice(0, 10);
+    
+    if (recentActivities.length === 0) {
+        activityList.innerHTML = '<p style="text-align: center; color: var(--light-text); margin: 20px 0;">No recent activity</p>';
+        return;
+    }
+    
+    recentActivities.forEach(activity => {
+        const activityItem = document.createElement('div');
+        activityItem.className = 'activity-item';
+        activityItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s ease;
+        `;
+        
+        activityItem.innerHTML = `
+            <div style="
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background-color: ${activity.color};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 12px;
+                color: white;
+                font-size: 14px;
+            ">
+                <i class="fas ${activity.icon}"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500; margin-bottom: 4px;">${activity.message}</div>
+                <div style="font-size: 12px; color: var(--light-text);">${formatRelativeTime(activity.timestamp)}</div>
+            </div>
+        `;
+        
+        activityItem.addEventListener('mouseenter', () => {
+            activityItem.style.backgroundColor = 'var(--light-bg)';
+        });
+        
+        activityItem.addEventListener('mouseleave', () => {
+            activityItem.style.backgroundColor = 'transparent';
+        });
+        
+        activityList.appendChild(activityItem);
+    });
+}
+
+function updateUpcomingEvents() {
+    const eventsList = document.getElementById('upcomingEventsList');
+    if (!eventsList) return;
+    
+    eventsList.innerHTML = '';
+    
+    const events = [];
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+    
+    // Upcoming absences
+    absences.filter(absence => {
+        const startDate = new Date(absence.startDate);
+        return startDate >= now && startDate <= thirtyDaysFromNow && absence.approved;
+    }).forEach(absence => {
+        const employee = employees.find(emp => emp.id === absence.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        
+        events.push({
+            type: 'absence',
+            title: `${employeeName} - ${getAbsenceTypeLabel(absence.type)}`,
+            date: new Date(absence.startDate),
+            icon: 'fa-calendar-times',
+            color: '#ffc107'
+        });
+    });
+    
+    // Contract end dates
+    contracts.filter(contract => {
+        if (!contract.endDate) return false;
+        const endDate = new Date(contract.endDate);
+        return endDate >= now && endDate <= thirtyDaysFromNow;
+    }).forEach(contract => {
+        const employee = employees.find(emp => emp.id === contract.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        
+        events.push({
+            type: 'contract',
+            title: `Contract expires - ${employeeName}`,
+            date: new Date(contract.endDate),
+            icon: 'fa-file-contract',
+            color: '#dc3545'
+        });
+    });
+    
+    // Sort by date
+    events.sort((a, b) => a.date - b.date);
+    
+    if (events.length === 0) {
+        eventsList.innerHTML = '<p style="text-align: center; color: var(--light-text); margin: 20px 0;">No upcoming events</p>';
+        return;
+    }
+    
+    events.slice(0, 10).forEach(event => {
+        const eventItem = document.createElement('div');
+        eventItem.className = 'event-item';
+        eventItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.2s ease;
+        `;
+        
+        eventItem.innerHTML = `
+            <div style="
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                background-color: ${event.color};
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 12px;
+                color: white;
+                font-size: 14px;
+            ">
+                <i class="fas ${event.icon}"></i>
+            </div>
+            <div style="flex: 1;">
+                <div style="font-weight: 500; margin-bottom: 4px;">${event.title}</div>
+                <div style="font-size: 12px; color: var(--light-text);">${event.date.toLocaleDateString()}</div>
+            </div>
+        `;
+        
+        eventItem.addEventListener('mouseenter', () => {
+            eventItem.style.backgroundColor = 'var(--light-bg)';
+        });
+        
+        eventItem.addEventListener('mouseleave', () => {
+            eventItem.style.backgroundColor = 'transparent';
+        });
+        
+        eventsList.appendChild(eventItem);
+    });
+}
+
+// Weather Functions
+function loadWeather() {
+    const weatherLoading = document.getElementById('weatherLoading');
+    const weatherData = document.getElementById('weatherData');
+    const weatherError = document.getElementById('weatherError');
+    
+    if (!weatherLoading || !weatherData || !weatherError) return;
+    
+    // Show loading state
+    weatherLoading.style.display = 'flex';
+    weatherData.style.display = 'none';
+    weatherError.style.display = 'none';
+    
+    // For demo purposes, we'll simulate weather data
+    // In a real application, you would make an API call to a weather service
+    setTimeout(() => {
+        try {
+            const mockWeatherData = generateMockWeatherData();
+            displayWeatherData(mockWeatherData);
+            
+            weatherLoading.style.display = 'none';
+            weatherData.style.display = 'block';
+            weatherError.style.display = 'none';
+        } catch (error) {
+            console.error('Weather loading error:', error);
+            weatherLoading.style.display = 'none';
+            weatherData.style.display = 'none';
+            weatherError.style.display = 'block';
+        }
+    }, 1000);
+}
+
+function refreshWeather() {
+    loadWeather();
+    showNotification('Weather refreshed', 'success');
+}
+
+function generateMockWeatherData() {
+    const conditions = ['sunny', 'cloudy', 'partly-cloudy', 'rainy'];
+    const currentCondition = conditions[Math.floor(Math.random() * conditions.length)];
+    
+    return {
+        current: {
+            temperature: Math.floor(Math.random() * 20) + 10, // 10-30°C
+            condition: currentCondition,
+            humidity: Math.floor(Math.random() * 40) + 40, // 40-80%
+            windSpeed: Math.floor(Math.random() * 20) + 5, // 5-25 km/h
+            visibility: Math.floor(Math.random() * 10) + 10, // 10-20 km
+            feelsLike: Math.floor(Math.random() * 20) + 10
+        },
+        forecast: Array.from({length: 5}, (_, i) => ({
+            day: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', {weekday: 'short'}),
+            condition: conditions[Math.floor(Math.random() * conditions.length)],
+            high: Math.floor(Math.random() * 20) + 15,
+            low: Math.floor(Math.random() * 15) + 5
+        }))
+    };
+}
+
+function displayWeatherData(data) {
+    // Update current weather
+    const currentTemp = document.getElementById('currentTemp');
+    const weatherIcon = document.getElementById('weatherIcon');
+    const visibility = document.getElementById('visibility');
+    const windSpeed = document.getElementById('windSpeed');
+    const humidity = document.getElementById('humidity');
+    const feelsLike = document.getElementById('feelsLike');
+    
+    if (currentTemp) currentTemp.textContent = data.current.temperature;
+    if (visibility) visibility.textContent = data.current.visibility;
+    if (windSpeed) windSpeed.textContent = data.current.windSpeed;
+    if (humidity) humidity.textContent = data.current.humidity;
+    if (feelsLike) feelsLike.textContent = data.current.feelsLike;
+    
+    // Update weather icon based on condition
+    if (weatherIcon) {
+        const iconMap = {
+            'sunny': 'fa-sun',
+            'cloudy': 'fa-cloud',
+            'partly-cloudy': 'fa-cloud-sun',
+            'rainy': 'fa-cloud-rain'
+        };
+        
+        weatherIcon.className = `fas ${iconMap[data.current.condition] || 'fa-sun'}`;
+    }
+    
+    // Update 5-day forecast
+    const forecastDays = document.getElementById('forecastDays');
+    if (forecastDays && data.forecast) {
+        forecastDays.innerHTML = '';
+        
+        data.forecast.forEach(day => {
+            const dayElement = document.createElement('div');
+            dayElement.className = 'forecast-day';
+            dayElement.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding: 8px;
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.5);
+                margin-right: 8px;
+                min-width: 60px;
+            `;
+            
+            const iconMap = {
+                'sunny': 'fa-sun',
+                'cloudy': 'fa-cloud',
+                'partly-cloudy': 'fa-cloud-sun',
+                'rainy': 'fa-cloud-rain'
+            };
+            
+            dayElement.innerHTML = `
+                <div style="font-size: 12px; font-weight: 600; margin-bottom: 4px;">${day.day}</div>
+                <i class="fas ${iconMap[day.condition] || 'fa-sun'}" style="font-size: 16px; margin: 4px 0; color: var(--primary-color);"></i>
+                <div style="font-size: 11px;">
+                    <div style="font-weight: 600;">${day.high}°</div>
+                    <div style="color: var(--light-text);">${day.low}°</div>
+                </div>
+            `;
+            
+            forecastDays.appendChild(dayElement);
+        });
+        
+        // Make forecast scrollable horizontally
+        forecastDays.style.cssText = `
+            display: flex;
+            overflow-x: auto;
+            padding: 8px 0;
+            gap: 8px;
+        `;
+    }
+}
+
+// Utility functions for dashboard
+function formatRelativeTime(date) {
+    const now = new Date();
+    const diffMs = now - new Date(date);
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMinutes < 1) {
+        return 'Just now';
+    } else if (diffMinutes < 60) {
+        return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+        return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    } else {
+        return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+}
+
+function getAbsenceTypeLabel(type) {
+    const labels = {
+        vacation: translations[currentLanguage].vacation || 'Vacation',
+        sick: translations[currentLanguage].sick || 'Sick',
+        personal: translations[currentLanguage].personal || 'Personal',
+        maternity: translations[currentLanguage].maternity || 'Maternity',
+        other: translations[currentLanguage].other || 'Other'
+    };
+    return labels[type] || type;
 }
