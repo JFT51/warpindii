@@ -105,7 +105,6 @@ const translations = {
         dashboardTitle: "Dashboard",
         dashboardSubtitle: "Overzicht van uw restaurant",
         refresh: "Vernieuwen",
-        totalEmployees: "Totaal Werknemers",
         activeEmployees: "Actieve Werknemers",
         weeklyShifts: "Shifts Deze Week",
         totalContracts: "Totaal Contracten",

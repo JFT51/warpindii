@@ -397,6 +397,17 @@ function showSection(sectionId) {
             if (typeof loadEmployees === 'function') {
                 loadEmployees();
             }
+        } else if (sectionId === 'dashboard') {
+            // Ensure dashboard data is loaded when switching to dashboard
+            if (typeof updateDashboardStats === 'function') {
+                updateDashboardStats();
+            }
+            if (typeof updateRecentActivity === 'function') {
+                updateRecentActivity();
+            }
+            if (typeof updateUpcomingEvents === 'function') {
+                updateUpcomingEvents();
+            }
         } else if (sectionId === 'settings') {
             // Load saved settings and show the first tab
             loadSettings();
@@ -764,10 +775,10 @@ async function initializeApp() {
         });
         
         // Load and apply logo if exists
-        if (customLogo) {
+        if (settings.customLogo) {
             const logoImg = document.getElementById('logoImg');
             if (logoImg) {
-                logoImg.src = customLogo;
+                logoImg.src = settings.customLogo;
             }
         }
         
@@ -858,11 +869,19 @@ async function initializeApp() {
         // Ensure the dashboard section is properly initialized and visible as homepage
         showSection('dashboard');
         
-        // Initialize dashboard data
+        // Initialize dashboard data immediately
         setTimeout(() => {
-            refreshDashboard();
-            loadWeather();
-        }, 100);
+            try {
+                console.log('Initializing dashboard data...');
+                updateDashboardStats();
+                updateRecentActivity();
+                updateUpcomingEvents();
+                loadWeather();
+                console.log('Dashboard initialization complete');
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+            }
+        }, 200);
     } catch (error) {
         console.error('Initialization error:', error);
         // Still try to show basic navigation even if initialization fails
