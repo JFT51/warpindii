@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Management Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <img src="logo.png" alt="Logo" class="logo" id="logoImg">
+                <h1>Restaurant Management</h1>
+            </div>
+            <div class="header-right">
+                <button class="btn-secondary" onclick="toggleLanguage()">
+                    <i class="fas fa-language"></i>
+                    <span id="langToggle">FR</span>
+                </button>
+                <button class="btn-secondary" onclick="openSettings()">
+                    <i class="fas fa-cog"></i>
+                    <span data-key="settings">Instellingen</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="main-nav">
+            <button class="nav-btn active" onclick="showSection('employees')" data-section="employees">
+                <i class="fas fa-users"></i>
+                <span data-key="employees">Werknemers</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('planning')" data-section="planning">
+                <i class="fas fa-calendar-alt"></i>
+                <span data-key="planning">Planning</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('table-planning')" data-section="table-planning">
+                <i class="fas fa-table"></i>
+                <span data-key="tablePlanning">Tabel Planning</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('timeclock')" data-section="timeclock">
+                <i class="fas fa-clock"></i>
+                <span data-key="timeclock">Tijdklok</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('contracts')" data-section="contracts">
+                <i class="fas fa-file-contract"></i>
+                <span data-key="contracts">Contracten</span>
+            </button>
+            <button class="nav-btn" onclick="showSection('absences')" data-section="absences">
+                <i class="fas fa-calendar-times"></i>
+                <span data-key="absences">Afwezigheden</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Overview -->
+            <section id="dashboard" class="content-section">
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalEmployees">0</h3>
+                            <p data-key="totalEmployees">Totaal Werknemers</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="activeContracts">0</h3>
+                            <p data-key="activeContracts">Actieve Contracten</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-times"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="pendingAbsences">0</h3>
+                            <p data-key="pendingAbsences">Afwezigheden in Behandeling</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="todayClockIns">0</h3>
+                            <p data-key="todayClockIns">Vandaag Ingeklokt</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-calendar-week"></i> <span data-key="weekOverview">Week Overzicht</span></h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="weekSummary" class="week-summary"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-exclamation-triangle"></i> <span data-key="alerts">Meldingen</span></h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="alertsList" class="alerts-list"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i class="fas fa-chart-line"></i> <span data-key="quickStats">Snelle Statistieken</span></h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="quick-stats">
+                                <div class="quick-stat">
+                                    <i class="fas fa-user-check"></i>
+                                    <span data-key="activeToday">Actief Vandaag</span>
+                                    <strong id="activeTodayCount">0</strong>
+                                </div>
+                                <div class="quick-stat">
+                                    <i class="fas fa-user-times"></i>
+                                    <span data-key="absentToday">Afwezig Vandaag</span>
+                                    <strong id="absentTodayCount">0</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Employees Section -->
+            <section id="employees" class="content-section active">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-users"></i> <span data-key="employeesTitle">Werknemers Beheer</span></h2>
+                        <p class="section-subtitle" data-key="employeesSubtitle">Beheer je restaurant personeel</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn-primary" onclick="openEmployeeModal()">
+                            <i class="fas fa-user-plus"></i>
+                            <span data-key="addEmployee">Werknemer Toevoegen</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="employeeSearch" placeholder="Zoek werknemers..." onkeyup="filterEmployees()">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" onclick="filterByContract('all')">
+                            <i class="fas fa-list"></i> Alle
+                        </button>
+                        <button class="filter-btn" data-filter="full-time" onclick="filterByContract('full-time')">
+                            <i class="fas fa-clock"></i> Voltijds
+                        </button>
+                        <button class="filter-btn" data-filter="part-time" onclick="filterByContract('part-time')">
+                            <i class="fas fa-clock-o"></i> Deeltijds
+                        </button>
+                        <button class="filter-btn" data-filter="student" onclick="filterByContract('student')">
+                            <i class="fas fa-graduation-cap"></i> Student
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="employees-grid" id="employeesGrid">
+                    <!-- Employee cards will be dynamically generated -->
+                </div>
+            </section>
+
+            <!-- Planning Section -->
+            <section id="planning" class="content-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-calendar-alt"></i> <span data-key="planningTitle">Week Planning</span></h2>
+                        <p class="section-subtitle" data-key="planningSubtitle">Plan werknemers voor de week</p>
+                    </div>
+                    <div class="section-actions">
+                        <div class="week-navigation">
+                            <button class="btn-icon" onclick="changeWeek(-1)" title="Vorige week">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span id="currentWeek" class="current-week"></span>
+                            <button class="btn-icon" onclick="changeWeek(1)" title="Volgende week">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <button class="btn-secondary" onclick="savePlanningTemplate()">
+                            <i class="fas fa-save"></i>
+                            <span data-key="saveTemplate">Template Opslaan</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="planning-container">
+                    <div class="employee-pool">
+                        <h3 data-key="availableEmployees">Beschikbare Werknemers</h3>
+                        <div id="employeePool" class="employee-pool-grid">
+                            <!-- Employee pool cards will be generated here -->
+                        </div>
+                    </div>
+                    <div class="week-calendar">
+                        <div class="calendar-header">
+                            <div class="time-column"></div>
+                            <div class="day-header" data-key="monday">Maandag</div>
+                            <div class="day-header" data-key="tuesday">Dinsdag</div>
+                            <div class="day-header" data-key="wednesday">Woensdag</div>
+                            <div class="day-header" data-key="thursday">Donderdag</div>
+                            <div class="day-header" data-key="friday">Vrijdag</div>
+                            <div class="day-header" data-key="saturday">Zaterdag</div>
+                            <div class="day-header" data-key="sunday">Zondag</div>
+                        </div>
+                        <div class="calendar-body" id="calendarBody">
+                            <!-- Calendar grid will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Table Planning Section -->
+            <section id="table-planning" class="content-section">
+                <div class="section-header">
+                    <h2 data-key="tablePlanningTitle">Tabel Planning</h2>
+                    <button class="btn-primary" onclick="exportTablePlanning()">
+                        <i class="fas fa-download"></i>
+                        <span data-key="export">Exporteren</span>
+                    </button>
+                </div>
+                <div class="table-planning-container">
+                    <table class="planning-table" id="planningTable">
+                        <thead>
+                            <tr>
+                                <th data-key="employee">Werknemer</th>
+                                <th data-key="monday">Maandag</th>
+                                <th data-key="tuesday">Dinsdag</th>
+                                <th data-key="wednesday">Woensdag</th>
+                                <th data-key="thursday">Donderdag</th>
+                                <th data-key="friday">Vrijdag</th>
+                                <th data-key="saturday">Zaterdag</th>
+                                <th data-key="sunday">Zondag</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planningTableBody">
+                            <!-- Table rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Timeclock Section -->
+            <section id="timeclock" class="content-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-clock"></i> <span data-key="timeclockTitle">Tijdklok</span></h2>
+                        <p class="section-subtitle" data-key="timeclockSubtitle">Monitor werknemer aanwezigheid</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn-secondary" onclick="exportTimeclockData()">
+                            <i class="fas fa-download"></i>
+                            <span data-key="exportData">Exporteer Data</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="timeclock-container">
+                    <div class="timeclock-card qr-code-section">
+                        <div class="card-header">
+                            <h3><i class="fas fa-qrcode"></i> <span data-key="qrCodeTitle">QR Code voor Werknemers</span></h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="qrCode" class="qr-code"></div>
+                            <p class="qr-instructions">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-key="qrCodeInstructions">Werknemers scannen deze code om in en uit te klokken</span>
+                            </p>
+                            <div class="qr-actions">
+                                <button class="btn-secondary" onclick="regenerateQR()">
+                                    <i class="fas fa-sync-alt"></i>
+                                    <span data-key="regenerateQR">Vernieuwen</span>
+                                </button>
+                                <button class="btn-secondary" onclick="printQR()">
+                                    <i class="fas fa-print"></i>
+                                    <span data-key="printQR">Afdrukken</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="timeclock-card timeclock-logs">
+                        <div class="card-header">
+                            <h3><i class="fas fa-history"></i> <span data-key="timeclockLogs">Tijdklok Logs</span></h3>
+                            <div class="card-actions">
+                                <button class="btn-icon" onclick="refreshLogs()" title="Verversen">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button class="btn-icon" onclick="clearLogs()" title="Wissen">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="logs-filter">
+                                <select id="logsDateFilter" onchange="filterLogs()">
+                                    <option value="today">Vandaag</option>
+                                    <option value="week">Deze Week</option>
+                                    <option value="month">Deze Maand</option>
+                                    <option value="all">Alles</option>
+                                </select>
+                            </div>
+                            <div id="timeclockLogsList" class="logs-list">
+                                <!-- Timeclock logs will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contracts Section -->
+            <section id="contracts" class="content-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-file-contract"></i> <span data-key="contractsTitle">Contracten</span></h2>
+                        <p class="section-subtitle" data-key="contractsSubtitle">Beheer arbeidscontracten</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn-secondary" onclick="exportContracts()">
+                            <i class="fas fa-file-export"></i>
+                            <span data-key="exportContracts">Exporteren</span>
+                        </button>
+                        <button class="btn-primary" onclick="openContractModal()">
+                            <i class="fas fa-file-plus"></i>
+                            <span data-key="createContract">Contract Aanmaken</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="contracts-stats">
+                    <div class="stat-item">
+                        <i class="fas fa-file-check"></i>
+                        <span data-key="signedContracts">Getekende Contracten</span>
+                        <strong id="signedContractsCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-file-clock"></i>
+                        <span data-key="pendingContracts">Wachtende Contracten</span>
+                        <strong id="pendingContractsCount">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-calendar-times"></i>
+                        <span data-key="expiringContracts">Verlopende Contracten</span>
+                        <strong id="expiringContractsCount">0</strong>
+                    </div>
+                </div>
+                
+                <div class="contracts-grid" id="contractsGrid">
+                    <!-- Contract cards will be dynamically generated -->
+                </div>
+            </section>
+
+            <!-- Absences Section -->
+            <section id="absences" class="content-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <h2><i class="fas fa-calendar-times"></i> <span data-key="absencesTitle">Afwezigheden</span></h2>
+                        <p class="section-subtitle" data-key="absencesSubtitle">Beheer verlof en afwezigheden</p>
+                    </div>
+                    <div class="section-actions">
+                        <button class="btn-secondary" onclick="exportAbsences()">
+                            <i class="fas fa-file-csv"></i>
+                            <span data-key="exportAbsences">Exporteren</span>
+                        </button>
+                        <button class="btn-primary" onclick="openAbsenceModal()">
+                            <i class="fas fa-calendar-plus"></i>
+                            <span data-key="addAbsence">Afwezigheid Toevoegen</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="absences-filter">
+                    <div class="filter-tabs">
+                        <button class="tab-btn active" data-tab="all" onclick="filterAbsences('all')">
+                            <i class="fas fa-list"></i> Alle
+                        </button>
+                        <button class="tab-btn" data-tab="pending" onclick="filterAbsences('pending')">
+                            <i class="fas fa-clock"></i> In Behandeling
+                        </button>
+                        <button class="tab-btn" data-tab="approved" onclick="filterAbsences('approved')">
+                            <i class="fas fa-check"></i> Goedgekeurd
+                        </button>
+                        <button class="tab-btn" data-tab="current" onclick="filterAbsences('current')">
+                            <i class="fas fa-calendar-day"></i> Huidig
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="absences-grid" id="absencesGrid">
+                    <!-- Absence cards will be dynamically generated -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Employee Modal -->
+    <div id="employeeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-key="addEmployeeTitle">Werknemer Toevoegen</h3>
+                <span class="close" onclick="closeEmployeeModal()">&times;</span>
+            </div>
+            <form id="employeeForm" class="modal-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="firstName">Voornaam *</label>
+                        <input type="text" id="firstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="lastName">Achternaam *</label>
+                        <input type="text" id="lastName" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="dateOfBirth">Geboortedatum *</label>
+                        <input type="date" id="dateOfBirth" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="niss">NISS/INSZ Nummer *</label>
+                        <input type="text" id="niss" placeholder="00.00.00-000.00" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-key="address">Adres *</label>
+                    <input type="text" id="address" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="phone">Telefoon *</label>
+                        <input type="tel" id="phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="email">E-mail *</label>
+                        <input type="email" id="email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="nationality">Nationaliteit *</label>
+                        <input type="text" id="nationality" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="placeOfBirth">Geboorteplaats *</label>
+                        <input type="text" id="placeOfBirth" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="civilStatus">Burgerlijke Staat</label>
+                        <select id="civilStatus">
+                            <option value="single" data-key="single">Alleenstaand</option>
+                            <option value="married" data-key="married">Gehuwd</option>
+                            <option value="divorced" data-key="divorced">Gescheiden</option>
+                            <option value="widowed" data-key="widowed">Weduwe/Weduwnaar</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="iban">IBAN Rekeningnummer *</label>
+                        <input type="text" id="iban" placeholder="BE00 0000 0000 0000" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="contractType">Contract Type *</label>
+                        <select id="contractType" required>
+                            <option value="full-time" data-key="fullTime">Voltijds</option>
+                            <option value="part-time" data-key="partTime">Deeltijds</option>
+                            <option value="flexi-job" data-key="flexiJob">Flexi Job</option>
+                            <option value="student" data-key="student">Student</option>
+                            <option value="extra" data-key="extra">Extra</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="jobCategory">Job Categorie *</label>
+                        <select id="jobCategory" required>
+                            <!-- Options will be populated from PC302.json -->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-key="jobTitle">Functie *</label>
+                    <select id="jobTitle" required>
+                        <!-- Options will be populated based on selected category -->
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeEmployeeModal()" data-key="cancel">Annuleren</button>
+                    <button type="submit" class="btn-primary" data-key="save">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contract Modal -->
+    <div id="contractModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 data-key="createContractTitle">Contract Aanmaken</h3>
+                <span class="close" onclick="closeContractModal()">&times;</span>
+            </div>
+            <div class="contract-form-container">
+                <form id="contractForm" class="modal-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-key="selectEmployee">Werknemer Selecteren *</label>
+                            <select id="contractEmployee" required>
+                                <!-- Employee options will be populated -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-key="contractStartDate">Startdatum *</label>
+                            <input type="date" id="contractStartDate" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-key="contractEndDate">Einddatum</label>
+                            <input type="date" id="contractEndDate">
+                        </div>
+                        <div class="form-group">
+                            <label data-key="salary">Salaris (Bruto) *</label>
+                            <input type="number" id="salary" step="0.01" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="contractTerms">Contract Voorwaarden</label>
+                        <textarea id="contractTerms" rows="10" placeholder="Contract voorwaarden en bepalingen..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="closeContractModal()" data-key="cancel">Annuleren</button>
+                        <button type="submit" class="btn-primary" data-key="generateContract">Contract Genereren</button>
+                    </div>
+                </form>
+                <div id="contractPreview" class="contract-preview">
+                    <!-- Contract preview will be displayed here -->
+                </div>
+                <div id="signatureSection" class="signature-section" style="display: none;">
+                    <h4 data-key="employeeSignature">Handtekening Werknemer</h4>
+                    <canvas id="signaturePad" class="signature-pad"></canvas>
+                    <div class="signature-actions">
+                        <button type="button" class="btn-secondary" onclick="clearSignature()" data-key="clear">Wissen</button>
+                        <button type="button" class="btn-primary" onclick="saveContract()" data-key="saveContract">Contract Opslaan</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Absence Modal -->
+    <div id="absenceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-key="addAbsenceTitle">Afwezigheid Toevoegen</h3>
+                <span class="close" onclick="closeAbsenceModal()">&times;</span>
+            </div>
+            <form id="absenceForm" class="modal-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="selectEmployee">Werknemer Selecteren *</label>
+                        <select id="absenceEmployee" required>
+                            <!-- Employee options will be populated -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="absenceType">Type Afwezigheid *</label>
+                        <select id="absenceType" required>
+                            <option value="vacation" data-key="vacation">Vakantie</option>
+                            <option value="sick" data-key="sick">Ziekte</option>
+                            <option value="personal" data-key="personal">Persoonlijk</option>
+                            <option value="maternity" data-key="maternity">Zwangerschapsverlof</option>
+                            <option value="other" data-key="other">Andere</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-key="startDate">Startdatum *</label>
+                        <input type="date" id="absenceStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label data-key="endDate">Einddatum *</label>
+                        <input type="date" id="absenceEndDate" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label data-key="reason">Reden</label>
+                    <textarea id="absenceReason" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="absenceApproved">
+                        <span data-key="approved">Goedgekeurd</span>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeAbsenceModal()" data-key="cancel">Annuleren</button>
+                    <button type="submit" class="btn-primary" data-key="save">Opslaan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-key="settingsTitle">Instellingen</h3>
+                <span class="close" onclick="closeSettings()">&times;</span>
+            </div>
+            <div class="settings-content">
+                <div class="form-group">
+                    <label data-key="uploadLogo">Logo Uploaden</label>
+                    <input type="file" id="logoUpload" accept="image/*" onchange="handleLogoUpload(event)">
+                </div>
+                <div class="form-group">
+                    <label data-key="colorTheme">Kleurthema</label>
+                    <div class="color-inputs">
+                        <div class="color-input-group">
+                            <label data-key="primaryColor">Primaire Kleur</label>
+                            <input type="color" id="primaryColor" value="#2d5a2d">
+                        </div>
+                        <div class="color-input-group">
+                            <label data-key="secondaryColor">Secundaire Kleur</label>
+                            <input type="color" id="secondaryColor" value="#4a7c4a">
+                        </div>
+                        <div class="color-input-group">
+                            <label data-key="accentColor">Accent Kleur</label>
+                            <input type="color" id="accentColor" value="#6b9d6b">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSettings()" data-key="cancel">Annuleren</button>
+                    <button type="button" class="btn-primary" onclick="applySettings()" data-key="apply">Toepassen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="translations.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
