@@ -140,7 +140,14 @@ const translations = {
         browserNotifications: "Browser Meldingen",
         saveSettings: "Instellingen Opslaan",
         exportContracts: "Exporteren",
-        exportAbsences: "Exporteren"
+        exportAbsences: "Exporteren",
+        copyWeek: "Week Kopiëren",
+        pasteWeek: "Week Plakken",
+        clearWeek: "Week Wissen",
+        addShift: "Shift Toevoegen",
+        selectEmployeeFor: "Selecteer werknemer voor",
+        start: "Start",
+        end: "Einde"
     },
     fr: {
         employees: "Employés",
@@ -283,7 +290,14 @@ const translations = {
         browserNotifications: "Notifications Navigateur",
         saveSettings: "Enregistrer Paramètres",
         exportContracts: "Exporter",
-        exportAbsences: "Exporter"
+        exportAbsences: "Exporter",
+        copyWeek: "Copier Semaine",
+        pasteWeek: "Coller Semaine",
+        clearWeek: "Effacer Semaine",
+        addShift: "Ajouter un Shift",
+        selectEmployeeFor: "Sélectionner employé pour",
+        start: "Début",
+        end: "Fin"
     }
 };
 

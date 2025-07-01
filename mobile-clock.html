@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tijdklok - Mobiel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .clock-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 350px;
+            width: 100%;
+        }
+
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .current-time {
+            font-size: 28px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .employee-select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            background: white;
+        }
+
+        .clock-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .clock-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .clock-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-in {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .btn-out {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+
+        .clock-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .status-in {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-out {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-neutral {
+            background: #e2e3e5;
+            color: #495057;
+            border: 1px solid #ced4da;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .recent-logs {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .recent-logs h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .log-action {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .log-action.in {
+            background: #28a745;
+        }
+
+        .log-action.out {
+            background: #dc3545;
+        }
+
+        @media (max-width: 480px) {
+            .clock-container {
+                padding: 30px 20px;
+            }
+            
+            .current-time {
+                font-size: 24px;
+            }
+            
+            .clock-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="clock-container">
+        <div class="logo">
+            <i class="fas fa-clock" style="font-size: 24px;"></i>
+        </div>
+        
+        <h1>Tijdklok</h1>
+        <p class="subtitle">Selecteer je naam en klok in of uit</p>
+        
+        <div class="current-time" id="currentTime"></div>
+        
+        <select class="employee-select" id="employeeSelect">
+            <option value="">Kies je naam...</option>
+        </select>
+        
+        <div id="statusDisplay" class="status hidden"></div>
+        
+        <div class="clock-buttons">
+            <button class="clock-btn btn-in" id="clockInBtn" onclick="clockAction('in')" disabled>
+                <i class="fas fa-play"></i>
+                Inklokken
+            </button>
+            <button class="clock-btn btn-out" id="clockOutBtn" onclick="clockAction('out')" disabled>
+                <i class="fas fa-stop"></i>
+                Uitklokken
+            </button>
+        </div>
+        
+        <div class="recent-logs">
+            <h3>Mijn recente activiteit</h3>
+            <div id="userLogs"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script>
+        let employees = [];
+        let timeclockLogs = [];
+        let selectedEmployee = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateCurrentTime();
+            populateEmployeeSelect();
+            
+            // Update time every second
+            setInterval(updateCurrentTime, 1000);
+        });
+
+        function loadData() {
+            const storedEmployees = localStorage.getItem('employees');
+            const storedLogs = localStorage.getItem('timeclockLogs');
+            
+            if (storedEmployees) {
+                employees = JSON.parse(storedEmployees);
+            }
+            
+            if (storedLogs) {
+                timeclockLogs = JSON.parse(storedLogs);
+            }
+        }
+
+        function updateCurrentTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('nl-NL', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            const dateString = now.toLocaleDateString('nl-NL', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
+            });
+            
+            document.getElementById('currentTime').innerHTML = `${timeString}<br><small style="font-size: 14px; font-weight: normal; color: #666;">${dateString}</small>`;
+        }
+
+        function populateEmployeeSelect() {
+            const select = document.getElementById('employeeSelect');
+            select.innerHTML = '<option value="">Kies je naam...</option>';
+            
+            employees.filter(emp => emp.active).forEach(employee => {
+                const option = document.createElement('option');
+                option.value = employee.id;
+                option.textContent = `${employee.firstName} ${employee.lastName}`;
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', function() {
+                const employeeId = this.value;
+                if (employeeId) {
+                    selectedEmployee = employees.find(emp => emp.id === employeeId);
+                    updateEmployeeStatus();
+                    enableButtons();
+                    showUserLogs(employeeId);
+                } else {
+                    selectedEmployee = null;
+                    hideStatus();
+                    disableButtons();
+                    hideUserLogs();
+                }
+            });
+        }
+
+        function updateEmployeeStatus() {
+            if (!selectedEmployee) return;
+            
+            const lastLog = getLastEmployeeAction(selectedEmployee.id);
+            const statusDiv = document.getElementById('statusDisplay');
+            
+            if (lastLog) {
+                const isIn = lastLog.action === 'in';
+                const time = new Date(lastLog.timestamp).toLocaleTimeString('nl-NL');
+                
+                statusDiv.className = `status ${isIn ? 'status-in' : 'status-out'}`;
+                statusDiv.textContent = `${isIn ? 'Ingeklokt' : 'Uitgeklokt'} om ${time}`;
+                
+                // Enable/disable buttons based on status
+                document.getElementById('clockInBtn').disabled = isIn;
+                document.getElementById('clockOutBtn').disabled = !isIn;
+            } else {
+                statusDiv.className = 'status status-neutral';
+                statusDiv.textContent = 'Nog niet ingeklokt vandaag';
+                
+                document.getElementById('clockInBtn').disabled = false;
+                document.getElementById('clockOutBtn').disabled = true;
+            }
+            
+            statusDiv.classList.remove('hidden');
+        }
+
+        function getLastEmployeeAction(employeeId) {
+            const today = new Date().toDateString();
+            const todaysLogs = timeclockLogs
+                .filter(log => log.employeeId === employeeId && new Date(log.timestamp).toDateString() === today)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            return todaysLogs.length > 0 ? todaysLogs[0] : null;
+        }
+
+        function enableButtons() {
+            updateEmployeeStatus();
+        }
+
+        function disableButtons() {
+            document.getElementById('clockInBtn').disabled = true;
+            document.getElementById('clockOutBtn').disabled = true;
+        }
+
+        function hideStatus() {
+            document.getElementById('statusDisplay').classList.add('hidden');
+        }
+
+        function clockAction(action) {
+            if (!selectedEmployee) return;
+            
+            const now = new Date();
+            const log = {
+                id: Date.now().toString(),
+                employeeId: selectedEmployee.id,
+                employeeName: `${selectedEmployee.firstName} ${selectedEmployee.lastName}`,
+                action: action,
+                timestamp: now.toISOString(),
+                date: now.toLocaleDateString('nl-NL'),
+                time: now.toLocaleTimeString('nl-NL')
+            };
+
+            // Validate action
+            const lastLog = getLastEmployeeAction(selectedEmployee.id);
+            if (lastLog) {
+                if (action === 'in' && lastLog.action === 'in') {
+                    showMessage('Je bent al ingeklokt! Klok eerst uit.', 'warning');
+                    return;
+                }
+                if (action === 'out' && lastLog.action === 'out') {
+                    showMessage('Je bent al uitgeklokt! Klok eerst in.', 'warning');
+                    return;
+                }
+            } else if (action === 'out') {
+                showMessage('Je moet eerst inklokken voordat je uitklokt.', 'warning');
+                return;
+            }
+
+            // Add log
+            timeclockLogs.push(log);
+            localStorage.setItem('timeclockLogs', JSON.stringify(timeclockLogs));
+
+            // Update status
+            updateEmployeeStatus();
+            showUserLogs(selectedEmployee.id);
+
+            // Show success message
+            const actionText = action === 'in' ? 'ingeklokt' : 'uitgeklokt';
+            showMessage(`Succesvol ${actionText} om ${log.time}`, 'success');
+        }
+
+        function showUserLogs(employeeId) {
+            const logsContainer = document.getElementById('userLogs');
+            const userLogs = timeclockLogs
+                .filter(log => log.employeeId === employeeId)
+                .slice(-5)
+                .reverse();
+
+            if (userLogs.length === 0) {
+                logsContainer.innerHTML = '<p style="text-align: center; color: #666; font-size: 14px;">Nog geen activiteit</p>';
+                return;
+            }
+
+            logsContainer.innerHTML = userLogs.map(log => `
+                <div class="log-item">
+                    <div>
+                        <div style="font-weight: 500;">${log.date}</div>
+                        <div style="font-size: 12px; color: #666;">${log.time}</div>
+                    </div>
+                    <div class="log-action ${log.action}">
+                        ${log.action === 'in' ? 'In' : 'Uit'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function hideUserLogs() {
+            document.getElementById('userLogs').innerHTML = '';
+        }
+
+        function showMessage(message, type) {
+            // Create a simple toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: 500;
+                z-index: 1000;
+                animation: slideDown 0.3s ease;
+            `;
+            
+            switch(type) {
+                case 'success':
+                    toast.style.background = '#28a745';
+                    break;
+                case 'warning':
+                    toast.style.background = '#ffc107';
+                    toast.style.color = '#333';
+                    break;
+                default:
+                    toast.style.background = '#17a2b8';
+            }
+            
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    </script>
+    
+    <style>
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+    </style>
+</body>
+</html>

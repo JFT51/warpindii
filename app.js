@@ -11,7 +11,7 @@ const defaultSettings = {
     },
     restaurantName: 'My Restaurant',
     defaultShiftDuration: 4,
-    useProfileIcon: true,
+    useProfileIcon: false, // Changed to false - initials by default
     language: 'nl'
 };
 
@@ -445,17 +445,47 @@ function showSection(sectionId) {
 // Make sure showSection is globally available
 window.showSection = showSection;
 
+// Profile toggle change handler
+function handleProfileToggleChange(event) {
+    const toggle = event.target;
+    useProfileIcon = toggle.checked;
+    console.log('Profile picture toggle changed to:', useProfileIcon);
+    localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
+    
+    // Update all profile picture toggles to stay in sync
+    document.querySelectorAll('#profilePictureToggle').forEach(otherToggle => {
+        if (otherToggle !== toggle) {
+            otherToggle.checked = useProfileIcon;
+        }
+    });
+    
+    // Refresh employee display to show initials or icons based on toggle
+    loadEmployees();
+}
+
 function initializeJobIconMapping() {
+    console.log('Starting initializeJobIconMapping...');
     const container = document.getElementById('jobIconMappingContainer');
     if (!container) {
         console.warn('jobIconMappingContainer not found');
         return;
     }
+    console.log('Container found:', container);
 
-    // Check if fontAwesome jobs data is available
-    if (!fontAwesomeJobs || Object.keys(fontAwesomeJobs).length === 0) {
-        console.warn('FontAwesome jobs data not available');
+    // Use our new employee icons system
+    if (!window.EMPLOYEE_ICONS || !window.getIconsByCategory) {
+        console.warn('Employee icons not available, trying to load...');
         container.innerHTML = '<p style="text-align: center; color: var(--light-text);">Loading icons...</p>';
+        
+        // Try to load data and retry
+        setTimeout(() => {
+            console.log('Retrying icon mapping initialization...');
+            if (window.EMPLOYEE_ICONS && window.getIconsByCategory) {
+                initializeJobIconMapping();
+            } else {
+                container.innerHTML = '<p style="text-align: center; color: var(--light-text);">Icons not available. Please refresh the page.</p>';
+            }
+        }, 1000);
         return;
     }
 
@@ -479,17 +509,21 @@ function initializeJobIconMapping() {
     `;
     container.appendChild(instructionDiv);
     
+    // Use our new employee icons system
+    const iconsByCategory = window.getIconsByCategory();
+    
     // Create a container for all icons organized by category
-    Object.keys(fontAwesomeJobs).forEach(categoryKey => {
-        if (!fontAwesomeJobs[categoryKey] || !Array.isArray(fontAwesomeJobs[categoryKey])) {
-            return; // Skip invalid categories
+    Object.keys(iconsByCategory).forEach(categoryKey => {
+        const categoryIcons = iconsByCategory[categoryKey];
+        if (!categoryIcons || categoryIcons.length === 0) {
+            return; // Skip empty categories
         }
         
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'icon-category';
         
         const categoryTitle = document.createElement('h4');
-        categoryTitle.textContent = categoryKey.replace(/_/g, ' ').toUpperCase();
+        categoryTitle.textContent = categoryKey.toUpperCase();
         categoryTitle.style.cssText = `
             margin: 12px 0 8px 0;
             font-size: 12px;
@@ -510,17 +544,13 @@ function initializeJobIconMapping() {
             margin-bottom: 16px;
         `;
         
-        fontAwesomeJobs[categoryKey].forEach(job => {
-            if (!job || !job.icon || !job.name) {
-                return; // Skip invalid job entries
-            }
-            
+        categoryIcons.forEach(iconData => {
             const button = document.createElement('button');
             button.className = 'icon-button';
             button.type = 'button';
-            button.innerHTML = `<i class="fas ${job.icon}"></i>`;
-            button.title = job.name;
-            button.dataset.icon = job.icon;
+            button.innerHTML = `<i class="fas ${iconData.icon}"></i>`;
+            button.title = iconData.name;
+            button.dataset.icon = iconData.icon;
             button.style.cssText = `
                 width: 36px;
                 height: 36px;
@@ -550,7 +580,7 @@ function initializeJobIconMapping() {
             
             button.onclick = (e) => {
                 e.preventDefault();
-                showJobIconMappingModal(job.icon, job.name);
+                showJobIconMappingModal(iconData.icon, iconData.name);
             };
             
             iconsContainer.appendChild(button);
@@ -562,7 +592,7 @@ function initializeJobIconMapping() {
         }
     });
     
-    console.log('Job icon mapping initialized with', Object.keys(fontAwesomeJobs).length, 'categories');
+    console.log('Employee icon mapping initialized with', Object.keys(iconsByCategory).length, 'categories');
 }
 
 function showJobIconMappingModal(iconClass, iconName) {
@@ -695,8 +725,17 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Add keyboard event listeners for shift copying
-    document.addEventListener('keydown', function(e) {
-        if (e.key === '+' || e.key === '=' && e.shiftKey) {
+document.addEventListener('keydown', function(e) {
+    // Handle various ways the '+' key can be pressed
+    // For US keyboards: Shift + '=' produces '+'
+    // For number pad: '+' key directly
+    // For other layouts: various combinations
+    console.log('Key pressed:', e.key, 'Code:', e.code, 'Shift:', e.shiftKey);
+    
+    if (e.key === '+' || (e.shiftKey && e.key === '=') || e.code === 'NumpadAdd' || e.code === 'Equal' || e.keyCode === 187) {
+        e.preventDefault();
+        
+        if (!isPlusKeyPressed) {
             isPlusKeyPressed = true;
             document.body.style.cursor = 'copy';
             
@@ -704,26 +743,30 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.shift-bar').forEach(bar => {
                 bar.style.boxShadow = '0 0 0 2px #007bff';
             });
-        }
-    });
-    
-    document.addEventListener('keyup', function(e) {
-        if (e.key === '+' || (e.key === '=' && !e.shiftKey)) {
-            isPlusKeyPressed = false;
-            shiftCopyMode = false;
-            document.body.style.cursor = 'default';
             
-            // Remove visual feedback
-            document.querySelectorAll('.shift-bar').forEach(bar => {
-                bar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-            });
-            
-            // If we have a copied shift but user released key, show notification
-            if (copiedShift) {
-                showNotification('Copy mode deactivated. Click on a day to paste the shift.', 'info');
-            }
+            showNotification('Copy mode activated. Click on a shift to copy it, then click elsewhere to paste.', 'info');
         }
-    });
+    }
+});
+
+document.addEventListener('keyup', function(e) {
+    // Handle key release for '+' combinations
+    if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd' || e.code === 'Equal' || e.keyCode === 187) {
+        isPlusKeyPressed = false;
+        shiftCopyMode = false;
+        document.body.style.cursor = 'default';
+        
+        // Remove visual feedback
+        document.querySelectorAll('.shift-bar').forEach(bar => {
+            bar.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+        });
+        
+        // If we have a copied shift but user released key, show notification
+        if (copiedShift) {
+            showNotification('Copy mode deactivated. Click on a calendar cell to paste the shift.', 'info');
+        }
+    }
+});
 });
 
 // Add keyboard shortcut info to language toggle button
@@ -816,39 +859,23 @@ async function initializeApp() {
             }
         });
         
-        // Set up profile picture toggle
-        const profilePictureToggle = document.getElementById('profilePictureToggle');
-        if (profilePictureToggle) {
-            profilePictureToggle.checked = useProfileIcon;
-            profilePictureToggle.addEventListener('change', () => {
-                useProfileIcon = profilePictureToggle.checked;
-                updateProfilePictureToggleLabel();
-                localStorage.setItem('useProfileIcon', JSON.stringify(useProfileIcon));
-                
-                // Show/hide job icon mapping based on toggle
-                const jobIconGroup = document.getElementById('jobIconMappingGroup');
-                if (jobIconGroup) {
-                    jobIconGroup.style.display = useProfileIcon ? 'block' : 'none';
-                }
-                
-                // Initialize job icon mapping if showing icons
-                if (useProfileIcon) {
-                    initializeJobIconMapping();
-                }
-                
-                loadEmployees(); // Refresh employee cards
-            });
-            
-            // Initial setup
-            const jobIconGroup = document.getElementById('jobIconMappingGroup');
-            if (jobIconGroup) {
-                jobIconGroup.style.display = useProfileIcon ? 'block' : 'none';
-            }
-            
-            if (useProfileIcon) {
-                initializeJobIconMapping();
-            }
-        }
+        // Set up profile picture toggle for both settings panels
+        const profilePictureToggles = document.querySelectorAll('#profilePictureToggle');
+        profilePictureToggles.forEach(toggle => {
+            toggle.checked = useProfileIcon;
+            toggle.addEventListener('change', handleProfileToggleChange);
+        });
+        
+        // Always show and initialize icon mapping - no longer dependent on toggle
+        const jobIconGroups = document.querySelectorAll('#jobIconMappingGroup');
+        jobIconGroups.forEach(group => {
+            group.style.display = 'block'; // Always visible
+            console.log('Icon mapping group is always visible');
+        });
+        
+        // Always initialize icon mapping regardless of toggle state
+        console.log('Initializing icon mapping (always available)...');
+        setTimeout(() => initializeJobIconMapping(), 500); // Delay to ensure DOM is ready
         
         // Initialize all other components
         populateJobCategories();
@@ -912,6 +939,7 @@ async function loadFontAwesomeJobs() {
         // Re-initialize icon mapping if profile icons are enabled
         if (useProfileIcon) {
             setTimeout(() => {
+                console.log('Re-initializing job icon mapping after FontAwesome data load...');
                 initializeJobIconMapping();
             }, 100);
         }
@@ -1151,6 +1179,9 @@ function createEmployeeCard(employee) {
                     </button>
                     <button class="btn-icon-secondary" onclick="copyEmployee('${employee.id}')" title="${translations[currentLanguage].copy || 'Kopiëren'}">
                         <i class="fas fa-copy"></i>
+                    </button>
+                    <button class="btn-icon-secondary" onclick="generateEmployeeQR('${employee.id}')" title="Generate QR Code">
+                        <i class="fas fa-qrcode"></i>
                     </button>
                     <button class="btn-icon-${employee.active ? 'warning' : 'success'}" onclick="toggleEmployeeStatus('${employee.id}')" title="${employee.active ? (translations[currentLanguage].deactivate || 'Deactiveren') : (translations[currentLanguage].activate || 'Activeren')}">
                         <i class="fas fa-${employee.active ? 'pause' : 'play'}"></i>
@@ -1411,9 +1442,25 @@ function filterByContract(contractType) {
 
 // Week planning functions
 function initializeWeekPlanning() {
-    generateCalendarGrid();
-    loadEmployeePool();
+    // First, update week display and navigation
     updateWeekDisplay();
+    updateWeekPicker();
+    
+    // Then generate dynamic day headers based on the current week
+    generateDynamicDayHeaders();
+    
+    // Generate calendar grid with the updated headers
+    generateCalendarGrid();
+    
+    // Load employee pool
+    loadEmployeePool();
+    
+    // Check if we have copied week data and enable paste button if so
+    const copiedWeekData = localStorage.getItem('copiedWeek');
+    const pasteBtn = document.getElementById('pasteWeekBtn');
+    if (pasteBtn && copiedWeekData) {
+        pasteBtn.disabled = false;
+    }
 }
 
 function generateCalendarGrid() {
@@ -1436,7 +1483,7 @@ function generateCalendarGrid() {
         }
         calendarBody.appendChild(timeCell);
         
-        // Day columns
+        // Day columns - Monday (0) to Sunday (6)
         for (let day = 0; day < 7; day++) {
             const cell = document.createElement('div');
             cell.className = 'calendar-cell';
@@ -1454,8 +1501,16 @@ function generateCalendarGrid() {
             cell.addEventListener('dragover', handleDragOver);
             cell.addEventListener('drop', handleDrop);
             
-            // Add click handler for shift pasting
-            cell.addEventListener('click', handleCellClick);
+            // Add click handler for time cell clicks (shift creation and pasting)
+            cell.addEventListener('click', function(e) {
+                if (copiedShift && (isPlusKeyPressed || shiftCopyMode)) {
+                    // Handle shift pasting
+                    handleCellClick(e);
+                } else {
+                    // Handle new shift creation
+                    handleTimeCellClick(e);
+                }
+            });
             
             calendarBody.appendChild(cell);
         }
@@ -1772,6 +1827,81 @@ function createShiftBar(employeeId, day, hour, cell) {
 }
 
 
+function copyCurrentWeek() {
+    const weekKey = getWeekKey(currentWeek);
+    const weekData = weeklyPlanning[weekKey] || [];
+    
+    if (weekData.length === 0) {
+        showNotification('No shifts to copy in current week', 'warning');
+        return;
+    }
+    
+    localStorage.setItem('copiedWeek', JSON.stringify(weekData));
+    const pasteBtn = document.getElementById('pasteWeekBtn');
+    if (pasteBtn) {
+        pasteBtn.disabled = false;
+    }
+    showNotification(`Week copied successfully (${weekData.length} shifts)`, 'success');
+}
+
+function pasteWeek() {
+    const copiedWeekData = localStorage.getItem('copiedWeek');
+    if (!copiedWeekData) {
+        showNotification('No week data to paste', 'error');
+        return;
+    }
+    
+    let pastedWeekData;
+    try {
+        pastedWeekData = JSON.parse(copiedWeekData);
+    } catch (error) {
+        showNotification('Invalid week data', 'error');
+        return;
+    }
+    
+    if (!pastedWeekData || pastedWeekData.length === 0) {
+        showNotification('No shifts to paste', 'warning');
+        return;
+    }
+    
+    // Clear current week first
+    const weekKey = getWeekKey(currentWeek);
+    document.querySelectorAll('.shift-bar').forEach(bar => bar.remove());
+    
+    // Paste the copied shifts
+    weeklyPlanning[weekKey] = [...pastedWeekData]; // Create a copy to avoid reference issues
+    localStorage.setItem('weeklyPlanning', JSON.stringify(weeklyPlanning));
+    
+    // Reload the planning to show the pasted shifts
+    loadWeekPlanning();
+    
+    // Update overlapping layout
+    setTimeout(() => {
+        updateOverlappingShiftsLayout();
+    }, 100);
+    
+    showNotification(`Week pasted successfully (${pastedWeekData.length} shifts)`, 'success');
+}
+
+function clearCurrentWeek() {
+    if (!confirm('Are you sure you want to clear all shifts for this week? This action cannot be undone.')) {
+        return;
+    }
+    
+    // Remove all visible shift bars
+    document.querySelectorAll('.shift-bar').forEach(bar => bar.remove());
+    
+    // Clear the week data
+    const weekKey = getWeekKey(currentWeek);
+    weeklyPlanning[weekKey] = [];
+    localStorage.setItem('weeklyPlanning', JSON.stringify(weeklyPlanning));
+    
+    // Reload planning to ensure clean state
+    loadWeekPlanning();
+    
+    showNotification('Current week cleared successfully', 'success');
+}
+
 function removeShift(button) {
     const shiftBar = button.parentElement;
     shiftBar.remove();
@@ -1801,24 +1931,185 @@ function saveWeeklyPlanning() {
 
 function getWeekKey(date) {
     const startOfWeek = new Date(date);
-    startOfWeek.setDate(date.getDate() - date.getDay() + 1); // Monday
+    // Belgian calendar: Monday = 1, Sunday = 0
+    const dayOfWeek = startOfWeek.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+    startOfWeek.setDate(date.getDate() + daysToMonday);
     return startOfWeek.toISOString().split('T')[0];
 }
 
 function changeWeek(direction) {
     currentWeek.setDate(currentWeek.getDate() + (direction * 7));
+    
+    // Update week display first
     updateWeekDisplay();
+    updateWeekPicker();
+    
+    // Regenerate dynamic day headers for the new week
+    generateDynamicDayHeaders();
+    
+    // Regenerate calendar grid with new headers
+    generateCalendarGrid();
+    
+    // Load planning for the new week
     loadWeekPlanning();
 }
 
 function updateWeekDisplay() {
     const startOfWeek = new Date(currentWeek);
-    startOfWeek.setDate(currentWeek.getDate() - currentWeek.getDay() + 1);
+    // Belgian calendar: Monday = 1, Sunday = 0
+    // If it's Sunday (0), we want to go back 6 days to get Monday
+    // If it's Monday (1), we want to stay at the same day (go back 0 days)
+    // If it's Tuesday (2), we want to go back 1 day to get Monday, etc.
+    const dayOfWeek = startOfWeek.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+    startOfWeek.setDate(currentWeek.getDate() + daysToMonday);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     
-    document.getElementById('currentWeek').textContent = 
-        `${startOfWeek.toLocaleDateString()} - ${endOfWeek.toLocaleDateString()}`;
+    // Format with localized month names
+    const locale = currentLanguage === 'nl' ? 'nl-NL' : 'fr-FR';
+    const monthNames = {
+        nl: ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 
+             'juli', 'augustus', 'september', 'oktober', 'november', 'december'],
+        fr: ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+             'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+    };
+    
+    const startMonth = monthNames[currentLanguage][startOfWeek.getMonth()];
+    const endMonth = monthNames[currentLanguage][endOfWeek.getMonth()];
+    
+    const startDay = startOfWeek.getDate();
+    const endDay = endOfWeek.getDate();
+    const year = startOfWeek.getFullYear();
+    
+    // Format the week display with localized month names
+    let weekDisplay;
+    if (startOfWeek.getMonth() === endOfWeek.getMonth()) {
+        weekDisplay = `${startDay} - ${endDay} ${startMonth} ${year}`;
+    } else {
+        weekDisplay = `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
+    }
+    
+    document.getElementById('currentWeek').textContent = weekDisplay;
+}
+
+function generateDynamicDayHeaders() {
+    const startOfWeek = new Date(currentWeek);
+    // Belgian calendar: Monday = 1, Sunday = 0
+    const dayOfWeek = startOfWeek.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+    startOfWeek.setDate(currentWeek.getDate() + daysToMonday);
+    
+    const calendarHeader = document.querySelector('.calendar-header');
+    if (!calendarHeader) return;
+    
+    // Clear existing headers
+    calendarHeader.innerHTML = '';
+    
+    // Add time column header
+    const timeColumn = document.createElement('div');
+    timeColumn.className = 'time-column';
+    calendarHeader.appendChild(timeColumn);
+    
+    // Day names in different languages
+    const dayNames = {
+        nl: ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'],
+        fr: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+    };
+    
+    // Month names in different languages
+    const monthNames = {
+        nl: ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'],
+        fr: ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc']
+    };
+    
+    // Generate 7 day headers (Monday to Sunday)
+    for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+        const dayDate = new Date(startOfWeek);
+        dayDate.setDate(startOfWeek.getDate() + dayIndex);
+        
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'day-header';
+        dayHeader.dataset.dayIndex = dayIndex;
+        
+        // Format: DDD DD MMM YYYY (e.g., "Maandag 15 jan 2025")
+        const dayName = dayNames[currentLanguage][dayIndex];
+        const day = dayDate.getDate().toString().padStart(2, '0');
+        const month = monthNames[currentLanguage][dayDate.getMonth()];
+        const year = dayDate.getFullYear();
+        
+        dayHeader.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 2px; font-size: 14px;">${dayName}</div>
+            <div style="font-size: 11px; opacity: 0.9;">${day} ${month} ${year}</div>
+        `;
+        
+        calendarHeader.appendChild(dayHeader);
+    }
+}
+
+function updateDayHeaders() {
+    // This function now just calls generateDynamicDayHeaders
+    generateDynamicDayHeaders();
+}
+
+function updateWeekPicker() {
+    const weekPicker = document.getElementById('weekPicker');
+    if (weekPicker) {
+        const startOfWeek = new Date(currentWeek);
+        // Belgian calendar: Monday = 1, Sunday = 0
+        const dayOfWeek = startOfWeek.getDay();
+        const daysToMonday = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
+        startOfWeek.setDate(currentWeek.getDate() + daysToMonday);
+        
+        // Format date as YYYY-WXX for week input
+        const year = startOfWeek.getFullYear();
+        const week = getWeekNumber(startOfWeek);
+        weekPicker.value = `${year}-W${week.toString().padStart(2, '0')}`;
+    }
+}
+
+function getWeekNumber(date) {
+    // ISO 8601 week numbering (Monday-based weeks)
+    const target = new Date(date.valueOf());
+    const dayNumber = (date.getDay() + 6) % 7; // Make Monday = 0
+    target.setDate(target.getDate() - dayNumber + 3); // Thursday of this week
+    const firstThursday = target.valueOf();
+    target.setMonth(0, 1);
+    if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+    }
+    return 1 + Math.ceil((firstThursday - target) / 604800000); // 604800000 = 7 * 24 * 3600 * 1000
+}
+
+function navigateToWeek() {
+    const weekPicker = document.getElementById('weekPicker');
+    if (weekPicker && weekPicker.value) {
+        const [year, week] = weekPicker.value.split('-W');
+        
+        // Calculate the first day (Monday) of the selected ISO week
+        const jan4 = new Date(parseInt(year), 0, 4); // January 4th is always in week 1
+        const jan4Day = (jan4.getDay() + 6) % 7; // Make Monday = 0
+        const firstMonday = new Date(jan4);
+        firstMonday.setDate(jan4.getDate() - jan4Day);
+        
+        const selectedWeek = new Date(firstMonday);
+        selectedWeek.setDate(firstMonday.getDate() + (parseInt(week) - 1) * 7);
+        
+        currentWeek = selectedWeek;
+        
+        // Update week display first
+        updateWeekDisplay();
+        
+        // Regenerate dynamic day headers for the selected week
+        generateDynamicDayHeaders();
+        
+        // Regenerate calendar grid with new headers
+        generateCalendarGrid();
+        
+        // Load planning for the selected week
+        loadWeekPlanning();
+    }
 }
 
 function loadWeekPlanning() {
@@ -1976,41 +2267,382 @@ function exportTablePlanning() {
 // QR Code and timeclock functions
 function generateQRCode() {
     const qrCodeElement = document.getElementById('qrCode');
-    const timeclockUrl = `${window.location.origin}/timeclock?restaurant=${btoa('restaurant-id')}`;
+    const timeclockUrl = `${window.location.origin}/timeclock.html`;
     
     QRCode.toCanvas(qrCodeElement, timeclockUrl, {
         width: 200,
-        height: 200
+        height: 200,
+        margin: 2,
+        color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+        }
+    }, function (error) {
+        if (error) console.error(error);
+        console.log('QR code generated successfully');
+    });
+}
+
+function regenerateQR() {
+    const qrCodeElement = document.getElementById('qrCode');
+    qrCodeElement.innerHTML = ''; // Clear existing QR code
+    generateQRCode();
+    showNotification('QR code regenerated', 'success');
+}
+
+function printQR() {
+    const qrCodeElement = document.getElementById('qrCode');
+    const canvas = qrCodeElement.querySelector('canvas');
+    
+    if (canvas) {
+        const printWindow = window.open('', '_blank');
+        const img = new Image();
+        img.onload = function() {
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>QR Code - Tijdklok</title>
+                        <style>
+                            body {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                font-family: Arial, sans-serif;
+                            }
+                            .qr-container {
+                                text-align: center;
+                                border: 2px solid #333;
+                                padding: 20px;
+                                border-radius: 10px;
+                            }
+                            h1 {
+                                margin-bottom: 20px;
+                                color: #333;
+                            }
+                            p {
+                                margin-top: 20px;
+                                color: #666;
+                                font-size: 14px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="qr-container">
+                            <h1>Restaurant Tijdklok</h1>
+                            <img src="${img.src}" alt="QR Code">
+                            <p>Scan deze code met je telefoon om in te klokken</p>
+                            <p>URL: ${window.location.origin}/timeclock.html</p>
+                        </div>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        };
+        img.src = canvas.toDataURL();
+    } else {
+        showNotification('No QR code found to print', 'error');
+    }
+}
+
+function generateEmployeeQR(employeeId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) {
+        showNotification('Employee not found', 'error');
+        return;
+    }
+    
+    // Create modal for employee QR code
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+    `;
+    
+    modalContent.innerHTML = `
+        <h3 style="margin: 0 0 20px 0; color: var(--primary-color);">Personal QR Code</h3>
+        <div style="margin-bottom: 20px;">
+            <strong>${employee.firstName} ${employee.lastName}</strong><br>
+            <small style="color: #666;">${employee.jobTitle}</small>
+        </div>
+        <div id="employeeQrCode" style="margin: 20px 0;"></div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
+            <button onclick="printEmployeeQR('${employee.id}')" style="padding: 8px 16px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <i class="fas fa-print"></i> Print
+            </button>
+            <button onclick="document.body.removeChild(this.closest('.modal'))" style="padding: 8px 16px; background: #666; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                Close
+            </button>
+        </div>
+    `;
+    
+    modal.className = 'modal';
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Generate QR code with employee data
+    const employeeData = JSON.stringify({
+        id: employee.id,
+        name: `${employee.firstName} ${employee.lastName}`
+    });
+    
+    QRCode.toCanvas(modalContent.querySelector('#employeeQrCode'), employeeData, {
+        width: 200,
+        height: 200,
+        margin: 2
     }, function (error) {
         if (error) console.error(error);
     });
+    
+    // Close on outside click
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
+}
+
+function printEmployeeQR(employeeId) {
+    const employee = employees.find(emp => emp.id === employeeId);
+    const qrCodeElement = document.getElementById('employeeQrCode');
+    const canvas = qrCodeElement.querySelector('canvas');
+    
+    if (canvas && employee) {
+        const printWindow = window.open('', '_blank');
+        const img = new Image();
+        img.onload = function() {
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Personal QR Code - ${employee.firstName} ${employee.lastName}</title>
+                        <style>
+                            body {
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                font-family: Arial, sans-serif;
+                            }
+                            .qr-container {
+                                text-align: center;
+                                border: 2px solid #333;
+                                padding: 20px;
+                                border-radius: 10px;
+                                max-width: 300px;
+                            }
+                            h1 {
+                                margin-bottom: 10px;
+                                color: #333;
+                                font-size: 24px;
+                            }
+                            h2 {
+                                margin-bottom: 20px;
+                                color: #666;
+                                font-size: 18px;
+                                font-weight: normal;
+                            }
+                            p {
+                                margin-top: 20px;
+                                color: #666;
+                                font-size: 14px;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="qr-container">
+                            <h1>${employee.firstName} ${employee.lastName}</h1>
+                            <h2>${employee.jobTitle}</h2>
+                            <img src="${img.src}" alt="Personal QR Code">
+                            <p>Scan deze code om in/uit te klokken</p>
+                        </div>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        };
+        img.src = canvas.toDataURL();
+    }
 }
 
 function loadTimeclockLogs() {
     const logsList = document.getElementById('timeclockLogsList');
+    if (!logsList) return;
+    
     logsList.innerHTML = '';
     
-    timeclockLogs.slice(-20).reverse().forEach(log => {
+    // Get filter value
+    const filter = document.getElementById('logsDateFilter')?.value || 'today';
+    let filteredLogs = [...timeclockLogs];
+    
+    // Apply date filter
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (filter) {
+        case 'today':
+            filteredLogs = timeclockLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                return logDate >= today;
+            });
+            break;
+        case 'week':
+            const weekAgo = new Date(today);
+            weekAgo.setDate(today.getDate() - 7);
+            filteredLogs = timeclockLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                return logDate >= weekAgo;
+            });
+            break;
+        case 'month':
+            const monthAgo = new Date(today);
+            monthAgo.setMonth(today.getMonth() - 1);
+            filteredLogs = timeclockLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                return logDate >= monthAgo;
+            });
+            break;
+        case 'all':
+        default:
+            // Show all logs
+            break;
+    }
+    
+    // Sort by timestamp (newest first) and limit to 50 entries
+    filteredLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    filteredLogs = filteredLogs.slice(0, 50);
+    
+    if (filteredLogs.length === 0) {
+        logsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No timeclock entries found</div>';
+        return;
+    }
+    
+    filteredLogs.forEach(log => {
         const logItem = document.createElement('div');
         logItem.className = 'log-item';
         logItem.style.cssText = `
-            padding: 10px;
+            padding: 12px;
             border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s ease;
         `;
         
+        logItem.addEventListener('mouseenter', () => {
+            logItem.style.backgroundColor = '#f8f9fa';
+        });
+        
+        logItem.addEventListener('mouseleave', () => {
+            logItem.style.backgroundColor = 'transparent';
+        });
+        
         const employee = employees.find(emp => emp.id === log.employeeId);
-        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown Employee';
+        
+        const timestamp = new Date(log.timestamp);
+        const timeString = timestamp.toLocaleString('nl-NL');
         
         logItem.innerHTML = `
-            <span>${employeeName}</span>
-            <span>${log.action === 'in' ? 'Clock In' : 'Clock Out'}</span>
-            <span>${new Date(log.timestamp).toLocaleString()}</span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: ${log.action === 'in' ? '#28a745' : '#dc3545'};
+                "></div>
+                <div>
+                    <div style="font-weight: 500;">${employeeName}</div>
+                    <div style="font-size: 12px; color: #666;">${timeString}</div>
+                </div>
+            </div>
+            <div style="
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 500;
+                color: white;
+                background-color: ${log.action === 'in' ? '#28a745' : '#dc3545'};
+            ">
+                ${log.action === 'in' ? 'IN' : 'OUT'}
+            </div>
         `;
         
         logsList.appendChild(logItem);
     });
+}
+
+function filterLogs() {
+    loadTimeclockLogs();
+}
+
+function refreshLogs() {
+    timeclockLogs = JSON.parse(localStorage.getItem('timeclockLogs')) || [];
+    loadTimeclockLogs();
+    showNotification('Timeclock logs refreshed', 'success');
+}
+
+function clearLogs() {
+    if (confirm('Are you sure you want to clear all timeclock logs? This action cannot be undone.')) {
+        timeclockLogs = [];
+        localStorage.setItem('timeclockLogs', JSON.stringify(timeclockLogs));
+        loadTimeclockLogs();
+        showNotification('Timeclock logs cleared', 'success');
+    }
+}
+
+function exportTimeclockData() {
+    if (timeclockLogs.length === 0) {
+        showNotification('No timeclock data to export', 'warning');
+        return;
+    }
+    
+    // Create CSV content
+    let csv = 'Employee,Action,Date,Time,Timestamp\n';
+    
+    timeclockLogs.forEach(log => {
+        const employee = employees.find(emp => emp.id === log.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const timestamp = new Date(log.timestamp);
+        const date = timestamp.toLocaleDateString('nl-NL');
+        const time = timestamp.toLocaleTimeString('nl-NL');
+        
+        csv += `"${employeeName}","${log.action.toUpperCase()}","${date}","${time}","${log.timestamp}"\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timeclock-data-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('Timeclock data exported successfully', 'success');
 }
 
 // Contract functions
@@ -2290,6 +2922,64 @@ function deleteAbsence(absenceId) {
     }
 }
 
+function exportContracts() {
+    if (contracts.length === 0) {
+        showNotification('No contracts to export', 'warning');
+        return;
+    }
+    
+    // Create CSV content
+    let csv = 'Employee,Start Date,End Date,Salary,Created,Status\n';
+    
+    contracts.forEach(contract => {
+        const employee = employees.find(emp => emp.id === contract.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const status = contract.signature ? 'Signed' : 'Pending';
+        
+        csv += `"${employeeName}","${contract.startDate}","${contract.endDate || 'N/A'}","€${contract.salary}","${new Date(contract.createdAt).toLocaleDateString()}","${status}"\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contracts-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('Contracts exported successfully', 'success');
+}
+
+function exportAbsences() {
+    if (absences.length === 0) {
+        showNotification('No absences to export', 'warning');
+        return;
+    }
+    
+    // Create CSV content
+    let csv = 'Employee,Type,Start Date,End Date,Reason,Status,Created\n';
+    
+    absences.forEach(absence => {
+        const employee = employees.find(emp => emp.id === absence.employeeId);
+        const employeeName = employee ? `${employee.firstName} ${employee.lastName}` : 'Unknown';
+        const status = absence.approved ? 'Approved' : 'Pending';
+        
+        csv += `"${employeeName}","${absence.type}","${absence.startDate}","${absence.endDate}","${absence.reason || ''}","${status}","${new Date(absence.createdAt).toLocaleDateString()}"\n`;
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `absences-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('Absences exported successfully', 'success');
+}
+
 // Settings functions
 // Settings functionality
 document.addEventListener('DOMContentLoaded', () => {
@@ -2491,6 +3181,9 @@ function updateLanguage() {
     
     // Update employee pool if on planning section
     loadEmployeePool();
+    
+    // Regenerate dynamic day headers with new language
+    generateDynamicDayHeaders();
     
     // Update language toggle button and dropdown
     initializeLanguageToggle();
@@ -2844,15 +3537,24 @@ function handleShiftClick(e) {
     }
 }
 
-function handleCellClick(e) {
+function handleTimeCellClick(e) {
+    // Only handle time cell clicks when NOT in copy mode
     if (!isPlusKeyPressed && !shiftCopyMode) {
         const cell = e.target.closest('.calendar-cell');
         if (!cell) return;
         
-        // Create a modal for employee selection instead of prompt
+        // Prevent default to avoid triggering other click handlers
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Show employee selection modal for creating new shift
         showEmployeeSelectionModal(cell);
         return;
     }
+}
+
+function handleCellClick(e) {
+    // Handle shift pasting when in copy mode
     if (copiedShift && (isPlusKeyPressed || shiftCopyMode)) {
         e.preventDefault();
         e.stopPropagation();
@@ -2937,6 +3639,10 @@ function showEmployeeSelectionModal(cell) {
 }
 
 
+function getTranslation(key) {
+    return translations[currentLanguage] && translations[currentLanguage][key] ? translations[currentLanguage][key] : null;
+}
+
 function createEmployeeSelectionPanel(day, startHour, startMinute) {
     const activeEmployees = employees.filter(emp => emp.active);
     if (activeEmployees.length === 0) {
@@ -2967,20 +3673,38 @@ function createEmployeeSelectionPanel(day, startHour, startMinute) {
         width: 90%;
         max-height: 500px;
         overflow-y: auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     `;
 
+    const dayNames = {
+        nl: ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'],
+        fr: ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+    };
+    
+    const dayName = dayNames[currentLanguage][day];
+    const addShiftTitle = currentLanguage === 'nl' ? 'Shift Toevoegen' : 'Ajouter un Shift';
+    const startLabel = currentLanguage === 'nl' ? 'Start:' : 'Début:';
+    const endLabel = currentLanguage === 'nl' ? 'Einde:' : 'Fin:';
+    const cancelLabel = currentLanguage === 'nl' ? 'Annuleren' : 'Annuler';
+    const selectEmployeeLabel = currentLanguage === 'nl' ? 'Selecteer werknemer voor' : 'Sélectionner employé pour';
+
     panelContent.innerHTML = `
-         3cdiv style="text-align: center; margin-bottom: 20px;" 3e
-             3ch3 style="margin: 0 0 8px 0; color: var(--primary-color);" 3eAdd Employee Shift 3c/h3 3e
-             3cdiv style="margin-bottom: 12px;" 3e
-                Start:  3cinput type="time" id="startTimeInput" value="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" / 3e
-                End:  3cinput type="time" id="endTimeInput" min="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" / 3e
-             3c/div 3e
-             3cdiv id="employeeList" style="max-height: 300px; overflow-y: auto;" 3e 3c/div 3e
-             3cdiv style="text-align: center; margin-top: 20px;" 3e
-                 3cbutton id="cancelSelection" style="padding: 8px 16px; border: 1px solid var(--border-color); background: white; border-radius: 6px; cursor: pointer;" 3eCancel 3c/button 3e
-             3c/div 3e
-         3c/div 3e
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h3 style="margin: 0 0 8px 0; color: var(--primary-color);">${addShiftTitle}</h3>
+            <p style="margin: 0 0 12px 0; color: var(--light-text); font-size: 14px;">${selectEmployeeLabel} ${dayName}</p>
+            <div style="margin-bottom: 16px; display: flex; gap: 12px; align-items: center; justify-content: center;">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                    ${startLabel} <input type="time" id="startTimeInput" value="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;" />
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 14px;">
+                    ${endLabel} <input type="time" id="endTimeInput" min="${startHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}" style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px;" />
+                </label>
+            </div>
+            <div id="employeeList" style="max-height: 300px; overflow-y: auto; margin-bottom: 16px;"></div>
+            <div style="text-align: center;">
+                <button id="cancelSelection" style="padding: 10px 20px; border: 1px solid var(--border-color); background: white; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s ease;">${cancelLabel}</button>
+            </div>
+        </div>
     `;
 
     const employeeList = panelContent.querySelector('#employeeList');
