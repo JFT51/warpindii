@@ -173,7 +173,7 @@ let defaultShiftDuration = parseInt(localStorage.getItem('defaultShiftDuration')
 let useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon') ?? String(defaultSettings.useProfileIcon));
 
 // pc302Data is defined in data.js
-let employees = JSON.parse(localStorage.getItem('employees')) || [
+const employees = JSON.parse(localStorage.getItem('employees')) || [
     {
         id: '3',
         firstName: 'Alice',
@@ -537,6 +537,8 @@ function showSection(sectionId) {
 window.showSection = showSection;
 
 // Profile toggle change handler
+window.currentLanguage = currentLanguage;
+
 function handleProfileToggleChange(event) {
     const toggle = event.target;
     useProfileIcon = toggle.checked;
@@ -971,7 +973,11 @@ async function initializeApp() {
         // Initialize all other components
         populateJobCategories();
         generateQRCode();
-        loadEmployees();
+try {
+    loadEmployees();
+} catch (error) {
+    console.error('Failed to load employees:', error);
+}
         loadContracts();
         loadAbsences();
         loadTimeclockLogs();
