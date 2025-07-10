@@ -5,12 +5,6 @@ let locations = JSON.parse(localStorage.getItem('locations')) || [
     { id: '3', name: 'Dining Room' }
 ];
 
-// Extend employee structure to include locations
-employees.forEach(employee => {
-    if (!employee.locations) {
-        employee.locations = [];
-    }
-});
 
 // Function to open location modal
 function openLocationModal(locationId = null) {
@@ -301,6 +295,14 @@ const employees = JSON.parse(localStorage.getItem('employees')) || [
         active: true
     }
 ];
+
+// Extend employee structure to include locations
+employees.forEach(employee => {
+    if (!employee.locations) {
+        employee.locations = [];
+    }
+});
+
 let contracts = JSON.parse(localStorage.getItem('contracts')) || [
     {
         id: 'contract2',
