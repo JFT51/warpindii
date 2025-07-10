@@ -63,6 +63,17 @@ function handleLocationFormSubmit(e) {
     closeLocationModal();
 }
 
+// Function to delete location
+function deleteLocation(locationId) {
+    if (confirm('Are you sure you want to delete this location?')) {
+        locations = locations.filter(loc => loc.id !== locationId);
+        localStorage.setItem('locations', JSON.stringify(locations));
+        loadLocations();
+        loadEmployeeLocationOptions(); // Refresh employee location options
+        showNotification('Location deleted successfully', 'success');
+    }
+}
+
 // Function to load and display locations
 function loadLocations() {
     const locationList = document.getElementById('locationList');
@@ -70,8 +81,55 @@ function loadLocations() {
 
     locations.forEach(location => {
         const li = document.createElement('li');
-        li.textContent = location.name;
+        li.className = 'location-item';
+        li.draggable = true;
+        li.dataset.locationId = location.id;
+        li.style.cssText = `
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: #f0f8f0;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        
+        li.innerHTML = `
+            <span>${location.name}</span>
+            <div>
+                <button onclick="openLocationModal('${location.id}')" style="margin-right: 4px; padding: 2px 6px; background: #007bff; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteLocation('${location.id}')" style="padding: 2px 6px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        // Add drag event listeners
+        li.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', location.id);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        
         locationList.appendChild(li);
+    });
+}
+
+// Function to load employee location options in the employee form
+function loadEmployeeLocationOptions() {
+    const employeeLocationsSelect = document.getElementById('employeeLocations');
+    if (!employeeLocationsSelect) return;
+    
+    employeeLocationsSelect.innerHTML = '';
+    
+    locations.forEach(location => {
+        const option = document.createElement('option');
+        option.value = location.id;
+        option.textContent = location.name;
+        employeeLocationsSelect.appendChild(option);
     });
 }
 
@@ -92,7 +150,8 @@ const defaultSettings = {
     colorTheme: {
         primary: '#007bff',
         secondary: '#6c757d',
-        accent: '#28a745'
+        accent: '#28a745',
+        navBackground: '#2c3e50'
     },
     restaurantName: 'My Restaurant',
     defaultShiftDuration: 4,
@@ -898,17 +957,19 @@ async function initializeApp() {
         defaultShiftDuration = settings.defaultShiftDuration;
         useProfileIcon = settings.useProfileIcon;
 
-        // Apply color theme
-        document.documentElement.style.setProperty('--primary-color', settings.colorTheme.primary);
-        document.documentElement.style.setProperty('--secondary-color', settings.colorTheme.secondary);
-        document.documentElement.style.setProperty('--accent-color', settings.colorTheme.accent);
+    // Apply color theme
+    document.documentElement.style.setProperty('--primary-color', settings.colorTheme.primary);
+    document.documentElement.style.setProperty('--secondary-color', settings.colorTheme.secondary);
+    document.documentElement.style.setProperty('--accent-color', settings.colorTheme.accent);
+    document.documentElement.style.setProperty('--nav-background-color', settings.colorTheme.navBackground);
         
         // Initialize color pickers
-        ['primaryColor', 'secondaryColor', 'accentColor'].forEach(colorId => {
+        ['primaryColor', 'secondaryColor', 'accentColor', 'navBackgroundColor'].forEach(colorId => {
             const colorPicker = document.getElementById(colorId);
             if (colorPicker) {
-                const color = colorId.replace('Color', '');
-                colorPicker.value = settings.colorTheme[color];
+                const color = colorId.replace('Color', '').replace('navBackground', 'navBackground');
+                const themeKey = colorId === 'navBackgroundColor' ? 'navBackground' : colorId.replace('Color', '');
+                colorPicker.value = settings.colorTheme[themeKey];
             }
         });
         
@@ -937,17 +998,19 @@ async function initializeApp() {
         useProfileIcon = JSON.parse(localStorage.getItem('useProfileIcon') ?? 'true');
         
         // Set up color pickers and their event listeners
-        ['primaryColor', 'secondaryColor', 'accentColor'].forEach(colorId => {
+        ['primaryColor', 'secondaryColor', 'accentColor', 'navBackgroundColor'].forEach(colorId => {
             const colorPicker = document.getElementById(colorId);
             if (colorPicker) {
                 colorPicker.addEventListener('input', (e) => {
-                    document.documentElement.style.setProperty(`--${colorId.replace('Color', '')}-color`, e.target.value);
+                    const cssVar = colorId === 'navBackgroundColor' ? '--nav-background-color' : `--${colorId.replace('Color', '')}-color`;
+                    document.documentElement.style.setProperty(cssVar, e.target.value);
                 });
                 colorPicker.addEventListener('change', () => {
                     const colors = {
                         primary: document.getElementById('primaryColor').value,
                         secondary: document.getElementById('secondaryColor').value,
-                        accent: document.getElementById('accentColor').value
+                        accent: document.getElementById('accentColor').value,
+                        navBackground: document.getElementById('navBackgroundColor').value
                     };
                     localStorage.setItem('colorTheme', JSON.stringify(colors));
                 });
@@ -3147,13 +3210,16 @@ function saveSettings() {
     const browserNotifications = document.getElementById('browserNotifications').checked;
 
     // Apply and save colors
+    const navBackgroundColor = document.getElementById('navBackgroundColor').value;
     document.documentElement.style.setProperty('--primary-color', primaryColor);
     document.documentElement.style.setProperty('--secondary-color', secondaryColor);
     document.documentElement.style.setProperty('--accent-color', accentColor);
+    document.documentElement.style.setProperty('--nav-background-color', navBackgroundColor);
     localStorage.setItem('colorTheme', JSON.stringify({
         primary: primaryColor,
         secondary: secondaryColor,
-        accent: accentColor
+        accent: accentColor,
+        navBackground: navBackgroundColor
     }));
 
     // Save restaurant info
@@ -3206,12 +3272,17 @@ function applySettings() {
     document.documentElement.style.setProperty('--primary-color', primaryColor);
     document.documentElement.style.setProperty('--secondary-color', secondaryColor);
     document.documentElement.style.setProperty('--accent-color', accentColor);
+    const navBackgroundColor = document.getElementById('navBackgroundColor')?.value;
+    if (navBackgroundColor) {
+        document.documentElement.style.setProperty('--nav-background-color', navBackgroundColor);
+    }
     
     // Save to localStorage
     localStorage.setItem('colorTheme', JSON.stringify({
         primary: primaryColor,
         secondary: secondaryColor,
-        accent: accentColor
+        accent: accentColor,
+        navBackground: navBackgroundColor
     }));
 
     // Save default shift duration

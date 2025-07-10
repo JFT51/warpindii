@@ -608,6 +608,10 @@
                                         <label data-key="accentColor">Accent Kleur</label>
                                         <input type="color" id="accentColor" value="#6b9d6b">
                                     </div>
+                                    <div class="color-input-group">
+                                        <label data-key="navBackgroundColor">Navigatie Achtergrond Kleur</label>
+                                        <input type="color" id="navBackgroundColor" value="#2c3e50">
+                                    </div>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -680,8 +684,8 @@
                 <h3>Locatiebeheer</h3>
                 <span class="close" onclick="closeLocationModal()">&times;</span>
             </div>
-            <div class="location-management-container">
-                <div class="location-form-section">
+            <div class="location-management-container" style="display: flex; gap: 20px; max-height: 500px;">
+                <div class="location-form-section" style="flex: 1;">
                     <h4>Locatie Toevoegen/Bewerken</h4>
                     <form id="locationForm" class="modal-form">
                         <div class="form-group">
@@ -694,11 +698,15 @@
                         </div>
                     </form>
                 </div>
-                <div class="location-list-section">
+                <div class="location-list-section" style="flex: 1;">
                     <h4>Bestaande Locaties</h4>
-                    <ul id="locationList" class="location-list">
+                    <div id="locationList" class="location-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
                         <!-- Location items will be populated here -->
-                    </ul>
+                    </div>
+                    <div id="locationDeleteZone" style="margin-top: 15px; padding: 20px; border: 2px dashed #dc3545; border-radius: 8px; text-align: center; background: #fff5f5; color: #dc3545; min-height: 60px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-trash" style="margin-right: 8px;"></i>
+                        Sleep locatie hier om te verwijderen
+                    </div>
                 </div>
             </div>
         </div>
@@ -797,9 +805,23 @@
                 </div>
                 <div class="form-group">
                     <label data-key="employeeLocations">Toegestane Locaties</label>
-                    <select id="employeeLocations" multiple>
-                        <!-- Location options will be populated here -->
-                    </select>
+                    <div style="display: flex; gap: 15px;">
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: #666; margin-bottom: 5px; display: block;">Beschikbare Locaties</label>
+                            <div id="availableLocations" style="min-height: 120px; border: 1px solid #ddd; border-radius: 4px; padding: 8px; background: #f9f9f9; overflow-y: auto;">
+                                <!-- Available location labels will be populated here -->
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 12px; color: #666; margin-bottom: 5px; display: block;">Toegewezen Locaties</label>
+                            <div id="assignedLocations" style="min-height: 120px; border: 2px dashed #28a745; border-radius: 4px; padding: 8px; background: #f0f8f0; overflow-y: auto;">
+                                <!-- Assigned location labels will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    <p style="font-size: 12px; color: #666; margin-top: 5px; font-style: italic;">
+                        <i class="fas fa-info-circle"></i> Sleep locaties van links naar rechts om toe te wijzen
+                    </p>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="closeEmployeeModal()" data-key="cancel">Annuleren</button>
