@@ -119,22 +119,61 @@ function loadLocations() {
 }
 
 // Function to load employee location options in the employee form
-function loadEmployeeLocationOptions() {
-    const employeeLocationsSelect = document.getElementById('employeeLocations');
-    if (!employeeLocationsSelect) return;
+function loadEmployeeLocationOptions(employee = null) {
+    const availableLocations = document.getElementById('availableLocations');
+    const assignedLocations = document.getElementById('assignedLocations');
+    if (!availableLocations || !assignedLocations) return;
     
-    employeeLocationsSelect.innerHTML = '';
+    availableLocations.innerHTML = '';
+    assignedLocations.innerHTML = '';
     
     locations.forEach(location => {
-        const option = document.createElement('option');
-        option.value = location.id;
-        option.textContent = location.name;
-        employeeLocationsSelect.appendChild(option);
+        const label = document.createElement('div');
+        label.textContent = location.name;
+        label.className = 'location-label';
+        label.draggable = true;
+        label.dataset.locationId = location.id;
+        label.style.cssText = `
+            padding: 8px 12px;
+            margin: 4px;
+            background: #f0f8f0;
+            border: 1px solid #28a745;
+            border-radius: 4px;
+            cursor: move;
+            user-select: none;
+        `;
+        
+        // Check if the location is already assigned to the employee
+        if (employee && employee.locations && employee.locations.includes(location.id)) {
+            assignedLocations.appendChild(label);
+        } else {
+            availableLocations.appendChild(label);
+        }
+        
+        label.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', location.id);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+    });
+
+    // Set up drop zones
+    [availableLocations, assignedLocations].forEach(container => {
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const locationId = e.dataTransfer.getData('text/plain');
+            const draggedLabel = document.querySelector(`.location-label[data-location-id="${locationId}"]`);
+
+            if (draggedLabel && !container.contains(draggedLabel)) {
+                container.appendChild(draggedLabel);
+            }
+        });
     });
 }
-
-// Add event listener to location form
-if (document.getElementById('locationForm')) {
     document.getElementById('locationForm').addEventListener('submit', handleLocationFormSubmit);
 }
 
@@ -1132,7 +1171,12 @@ function openEmployeeModal(employeeId = null) {
         delete form.dataset.editingId;
         modalTitle.textContent = translations[currentLanguage].addEmployeeTitle;
         populateJobCategories();
+        // Clear location assignments for new employee
+        loadEmployeeLocationOptions();
     }
+    
+    // Always load location options when opening the modal
+    loadEmployeeLocationOptions(employeeId ? employees.find(emp => emp.id === employeeId) : null);
     
     modal.style.display = 'block';
 }
