@@ -250,6 +250,10 @@
                             <i class="fas fa-user-plus"></i>
                             <span data-key="addEmployee">Werknemer Toevoegen</span>
                         </button>
+                        <button class="btn-secondary" onclick="openLocationModal()">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span data-key="manageLocations">Beheer Locaties</span>
+                        </button>
                     </div>
                 </div>
                 
@@ -669,6 +673,37 @@
         </main>
     </div>
 
+    <!-- Location Modal -->
+    <div id="locationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Locatiebeheer</h3>
+                <span class="close" onclick="closeLocationModal()">&times;</span>
+            </div>
+            <div class="location-management-container">
+                <div class="location-form-section">
+                    <h4>Locatie Toevoegen/Bewerken</h4>
+                    <form id="locationForm" class="modal-form">
+                        <div class="form-group">
+                            <label for="locationName">Naam Locatie</label>
+                            <input type="text" id="locationName" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" onclick="closeLocationModal()">Annuleren</button>
+                            <button type="submit" class="btn-primary">Opslaan</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="location-list-section">
+                    <h4>Bestaande Locaties</h4>
+                    <ul id="locationList" class="location-list">
+                        <!-- Location items will be populated here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Employee Modal -->
     <div id="employeeModal" class="modal">
         <div class="modal-content">
@@ -758,6 +793,12 @@
                     <label data-key="jobTitle">Functie *</label>
                     <select id="jobTitle" required>
                         <!-- Options will be populated based on selected category -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label data-key="employeeLocations">Toegestane Locaties</label>
+                    <select id="employeeLocations" multiple>
+                        <!-- Location options will be populated here -->
                     </select>
                 </div>
                 <div class="form-actions">

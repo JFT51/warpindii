@@ -1,3 +1,94 @@
+// Locations array to manage different working areas
+let locations = JSON.parse(localStorage.getItem('locations')) || [
+    { id: '1', name: 'Kitchen' },
+    { id: '2', name: 'Bar' },
+    { id: '3', name: 'Dining Room' }
+];
+
+// Extend employee structure to include locations
+employees.forEach(employee => {
+    if (!employee.locations) {
+        employee.locations = [];
+    }
+});
+
+// Function to open location modal
+function openLocationModal(locationId = null) {
+    const modal = document.getElementById('locationModal');
+    const form = document.getElementById('locationForm');
+    const modalTitle = modal.querySelector('.modal-header h3');
+
+    if (locationId) {
+        // Edit mode
+        const location = locations.find(loc => loc.id === locationId);
+        if (location) {
+            document.getElementById('locationName').value = location.name;
+            form.dataset.editingId = locationId;
+            modalTitle.textContent = 'Edit Location';
+        }
+    } else {
+        // Add mode
+        form.reset();
+        delete form.dataset.editingId;
+        modalTitle.textContent = 'Add Location';
+    }
+
+    modal.style.display = 'block';
+}
+
+// Function to close location modal
+function closeLocationModal() {
+    document.getElementById('locationModal').style.display = 'none';
+}
+
+// Handle location form submission
+function handleLocationFormSubmit(e) {
+    e.preventDefault();
+    const locationName = document.getElementById('locationName').value;
+    const existingLocationId = document.getElementById('locationForm').dataset.editingId;
+
+    const location = {
+        id: existingLocationId || Date.now().toString(),
+        name: locationName
+    };
+
+    if (existingLocationId) {
+        // Update existing location
+        const index = locations.findIndex(loc => loc.id === existingLocationId);
+        if (index !== -1) {
+            locations[index] = location;
+        }
+        delete document.getElementById('locationForm').dataset.editingId;
+    } else {
+        // Add new location
+        locations.push(location);
+    }
+
+    localStorage.setItem('locations', JSON.stringify(locations));
+    loadLocations();
+    closeLocationModal();
+}
+
+// Function to load and display locations
+function loadLocations() {
+    const locationList = document.getElementById('locationList');
+    locationList.innerHTML = '';
+
+    locations.forEach(location => {
+        const li = document.createElement('li');
+        li.textContent = location.name;
+        locationList.appendChild(li);
+    });
+}
+
+// Add event listener to location form
+if (document.getElementById('locationForm')) {
+    document.getElementById('locationForm').addEventListener('submit', handleLocationFormSubmit);
+}
+
+// Load initial data
+loadLocations();
+
 // Global variables and default settings
 const defaultSettings = {
     notifications: {
